@@ -1,0 +1,20 @@
+{
+    "name": "UniCAVE",
+    "references": [
+        "Unity.TextMeshPro",
+        "Unity.Netcode.Runtime",
+        "Unity.Networking.Transport",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
