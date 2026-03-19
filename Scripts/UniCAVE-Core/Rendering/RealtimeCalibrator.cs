@@ -80,6 +80,11 @@ namespace UniCAVE
         /// </summary>
         public string configsFolder = "configs";
 
+        private bool CanSendRpc()
+        {
+            return IsServer && NetworkManager != null && NetworkManager.IsListening && IsSpawned;
+        }
+
         void Start()
         {
             allOptions = new List<CalibrationSelection>();
@@ -112,7 +117,7 @@ namespace UniCAVE
             yield return new WaitForSeconds(3);
             this.CreateInfoDisplay();
             this.InfoDisplayShift(this.selectedIndex);
-            if(IsServer) this.InfoDisplayShiftClientRpc(this.selectedIndex);
+            if(CanSendRpc()) this.InfoDisplayShiftClientRpc(this.selectedIndex);
             yield break;
         }
 
@@ -389,7 +394,7 @@ namespace UniCAVE
         {
             Debug.Log("server gives selectedIndex " + selectedIndex);
             LocalInterpolateFromCorners(selectedIndex);
-            if(IsServer) InterpolateFromCornersClientRpc(selectedIndex);
+            if(CanSendRpc()) InterpolateFromCornersClientRpc(selectedIndex);
         }
 
         /// <summary>
@@ -400,7 +405,7 @@ namespace UniCAVE
         private CalibrationType CycleNextCalibrationType()
         {
             this.calibrationType = (from CalibrationType val in Enum.GetValues(typeof(CalibrationType)) where val > this.calibrationType orderby val select val).DefaultIfEmpty().First();
-            if(IsServer) this.SetCalibrationTypeClientRpc(this.calibrationType);
+            if(CanSendRpc()) this.SetCalibrationTypeClientRpc(this.calibrationType);
             this.infoDisplayInstance.SetText(this.calibrationType.ToString());
             return this.calibrationType;
         }
@@ -413,7 +418,7 @@ namespace UniCAVE
         private void AdjustGridSelectSize(bool increase)
         {
             this.LocalAdjustGridSelectSize(increase);
-            if(IsServer) this.AdjustGridSelectSizeClientRpc(increase);
+            if(CanSendRpc()) this.AdjustGridSelectSizeClientRpc(increase);
         }
 
         /// <summary>
@@ -424,7 +429,7 @@ namespace UniCAVE
         private void VertexShift(Vector2 direction, float delta)
         {
             LocalShift(direction, delta, selectedIndex, vertexIndex);
-            if(IsServer) ShiftClientRpc(direction, delta, selectedIndex, vertexIndex);
+            if(CanSendRpc()) ShiftClientRpc(direction, delta, selectedIndex, vertexIndex);
         }
 
         /// <summary>
@@ -435,7 +440,7 @@ namespace UniCAVE
         private void PositionShift(Vector3 direction, float delta)
         {
             this.LocalPositionShift(direction, delta, selectedIndex);
-            if(IsServer) this.MovePositionClientRpc(direction, delta, selectedIndex);
+            if(CanSendRpc()) this.MovePositionClientRpc(direction, delta, selectedIndex);
         }
 
         /// <summary>
@@ -446,7 +451,7 @@ namespace UniCAVE
         private void RotationShift(Vector3 direction, float delta)
         {
             this.LocalRotationShift(direction, delta, selectedIndex);
-            if(IsServer) this.RotateClientRpc(direction, delta, selectedIndex);
+            if(CanSendRpc()) this.RotateClientRpc(direction, delta, selectedIndex);
         }
 
         /// <summary>
@@ -455,7 +460,7 @@ namespace UniCAVE
         private void DisplayShift()
         {
             InfoDisplayShift(selectedIndex);
-            if(IsServer) InfoDisplayShiftClientRpc(selectedIndex);
+            if(CanSendRpc()) InfoDisplayShiftClientRpc(selectedIndex);
         }
 
         /// <summary>
@@ -464,7 +469,7 @@ namespace UniCAVE
         private void SetLastIndex(int index)
         {
             this.lastSelectedIndex = index;
-            if(IsServer) this.SetLastIndexClientRpc(index);
+            if(CanSendRpc()) this.SetLastIndexClientRpc(index);
         }
 
         #region RPCCALLS

@@ -40,6 +40,14 @@ namespace UniCAVE
 
         private int frameCount = 0;
 
+        private bool CanSendRpc
+        {
+            get
+            {
+                return IsServer && NetworkManager != null && NetworkManager.IsListening && IsSpawned;
+            }
+        }
+
         /// <summary>
         /// If server, broadcast information to all clients.
         /// </summary>
@@ -49,8 +57,16 @@ namespace UniCAVE
             {
                 if(Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
                 {
-                    QuitApplicationClientRpc();
+                    if(CanSendRpc)
+                    {
+                        QuitApplicationClientRpc();
+                    }
                     Application.Quit();
+                }
+
+                if(!CanSendRpc)
+                {
+                    return;
                 }
 
                 if(head != null)
@@ -148,7 +164,7 @@ namespace UniCAVE
                 ps.Play();
             }
 
-            Debug.LogError($"Synced random seed to {seed}.");
+            Debug.Log($"Synced random seed to {seed}.");
         }
 
         /// <summary>

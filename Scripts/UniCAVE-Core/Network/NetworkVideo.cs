@@ -38,6 +38,14 @@ namespace UniCAVE
         public float scrubThreshold = 1.0f;
         public float convergenceRate = 1.0f;
 
+        private bool CanSendRpc
+        {
+            get
+            {
+                return IsServer && NetworkManager != null && NetworkManager.IsListening && IsSpawned;
+            }
+        }
+
         [ClientRpc]
         private void UpdateFieldsClientRpc(float _canonicalVideoTime, float _canonicalPlaybackSpeed, bool _canonicalPlaying)
         {
@@ -60,7 +68,10 @@ namespace UniCAVE
                 canonicalVideoTime = (float)player.time;
                 canonicalPlaybackSpeed = player.playbackSpeed;
                 canonicalPlaying = player.isPlaying;
-                UpdateFieldsClientRpc(canonicalVideoTime, canonicalPlaybackSpeed, canonicalPlaying);
+                if(CanSendRpc)
+                {
+                    UpdateFieldsClientRpc(canonicalVideoTime, canonicalPlaybackSpeed, canonicalPlaying);
+                }
             }
             else
             {
