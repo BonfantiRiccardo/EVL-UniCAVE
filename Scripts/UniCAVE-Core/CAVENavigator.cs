@@ -24,7 +24,7 @@ namespace UniCAVE
 
         [Header("Rotation")]
         [Tooltip("Rotation speed in degrees per second")]
-        public float rotateSpeed = 60.0f;
+        public float rotateSpeed = 20.0f;
 
         [Header("Vertical")]
         [Tooltip("Speed for moving up/down (Q/E keys or triggers)")]

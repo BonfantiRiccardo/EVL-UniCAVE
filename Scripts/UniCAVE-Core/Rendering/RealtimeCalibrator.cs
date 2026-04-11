@@ -64,6 +64,11 @@ namespace UniCAVE
         [SerializeField]
         private InfoDisplay infoDisplay;
 
+        [Header("Debug")]
+        [SerializeField]
+        [Tooltip("Enable verbose movement calibration logs.")]
+        private bool logMovementDebug = false;
+
         /// <summary>
         /// The instantiated instance of InfoDisplay for the right eye/cam
         /// </summary>
@@ -83,6 +88,12 @@ namespace UniCAVE
         private bool CanSendRpc()
         {
             return IsServer && NetworkManager != null && NetworkManager.IsListening && IsSpawned;
+        }
+
+        private void LogMovement(string message)
+        {
+            if (logMovementDebug)
+                Debug.Log(message);
         }
 
         void Start()
@@ -148,7 +159,7 @@ namespace UniCAVE
             PhysicalDisplayCalibration calibration = allOptions[selectedIndex].calibration;
             calibration.SetVisualMarkerVertextPoint(vertexIndex);
 
-            Debug.Log("RealtimeCalibration: LocalShift called " + delta + ", " + selectedIndex + ", " + vertexIndex);
+            LogMovement("RealtimeCalibration: LocalShift called " + delta + ", " + selectedIndex + ", " + vertexIndex);
 
             MeshFilter lastWarpedFilter = null;
             foreach(Dewarp dewarp in calibration.GetDisplayWarpsValues())
@@ -342,7 +353,7 @@ namespace UniCAVE
             PhysicalDisplayCalibration calibration = allOptions[selectedIndex].calibration;
             calibration.SetVisualMarkerVertextPoint(vertexIndex);
 
-            Debug.Log("RealtimeCalibration: InterpolateFromCorners called, selectedIndex " + selectedIndex);
+            LogMovement("RealtimeCalibration: InterpolateFromCorners called, selectedIndex " + selectedIndex);
 
             MeshFilter lastWarpedFilter = null;
             foreach(Dewarp dewarp in calibration.GetDisplayWarpsValues())
@@ -392,7 +403,7 @@ namespace UniCAVE
         /// </summary>
         public void InterpolateFromCorners()
         {
-            Debug.Log("server gives selectedIndex " + selectedIndex);
+            LogMovement("server gives selectedIndex " + selectedIndex);
             LocalInterpolateFromCorners(selectedIndex);
             if(CanSendRpc()) InterpolateFromCornersClientRpc(selectedIndex);
         }
@@ -636,10 +647,10 @@ namespace UniCAVE
 
                 int lastIndex = this.vertexIndex - 1;
                 this.vertexIndex = (lastIndex < 0) ? 63 : lastIndex;
-                Debug.Log(vertexIndex);
+                LogMovement(vertexIndex.ToString());
                 if(!noOptions)
                 {
-                    Debug.Log(vertexIndex);
+                    LogMovement(vertexIndex.ToString());
                     this.VertexShift(direction, 1f);
                 }
 
@@ -650,7 +661,7 @@ namespace UniCAVE
                 this.vertexIndex = (vertexIndex + 1) % 64;
                 if(!noOptions)
                 {
-                    Debug.Log(vertexIndex);
+                    LogMovement(vertexIndex.ToString());
                     this.VertexShift(direction, 1f);
                 }
             }
@@ -660,7 +671,7 @@ namespace UniCAVE
                 this.vertexIndex = (vertexIndex + 8) % 64;
                 if(!noOptions)
                 {
-                    Debug.Log(vertexIndex);
+                    LogMovement(vertexIndex.ToString());
                     this.VertexShift(direction, 1f);
                 }
             }
@@ -670,7 +681,7 @@ namespace UniCAVE
                 this.vertexIndex = (vertexIndex + (64 - 8)) % 64;
                 if(!noOptions)
                 {
-                    Debug.Log(vertexIndex);
+                    LogMovement(vertexIndex.ToString());
                     this.VertexShift(direction, 1f);
                 }
             }
@@ -710,7 +721,7 @@ namespace UniCAVE
 
             if(anyPressed)
             {
-                Debug.Log("RealtimeCalibration: IsServer = " + IsServer);
+                LogMovement("RealtimeCalibration: IsServer = " + IsServer);
                 if(IsServer)
                 {
                     switch(this.calibrationType)

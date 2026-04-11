@@ -32,6 +32,11 @@ namespace UniCAVE
 
         public NetworkManager networkManager;
 
+        [Tooltip("Cap the main loop to this framerate. Set to 60 for 60 Hz displays. " +
+                 "This applies even on the head machine where VSync has no effect because " +
+                 "no swap chain is being presented (no eye cameras → nothing to vblank against).")]
+        public int targetFrameRate = 240; 
+
         [SerializeField]
         [UnityEngine.Serialization.FormerlySerializedAs("headMachine")]
         string oldHeadMachine = "C6_V1_HEAD";
@@ -52,6 +57,15 @@ namespace UniCAVE
         /// </summary>
         void Start()
         {
+            // Cap the main loop. VSync only works when a swap chain is being
+            // presented; on the head machine no eye cameras are created so the
+            // loop spins at 1000+ FPS regardless of vSyncCount. targetFrameRate
+            // throttles via sleep and works whether or not anything renders.
+            if(targetFrameRate > 0)
+            {
+                Application.targetFrameRate = targetFrameRate;
+            }
+
             string serverArg = Util.GetArg("serverAddress");
             if(serverArg != null)
             {
@@ -85,6 +99,17 @@ namespace UniCAVE
 #else
             networkManager.StartServer();
 #endif
+        }
+
+        void OnDestroy()
+        {
+            // Ensure the NetworkManager shuts down cleanly to dispose native
+            // NetworkDriver allocations (NativeList<int>, NetworkEventQueue, etc.).
+            // Without this, Unity reports persistent allocation leaks on exit.
+            if (networkManager != null && (networkManager.IsClient || networkManager.IsServer || networkManager.IsListening))
+            {
+                networkManager.Shutdown();
+            }
         }
 
         /// <summary>
@@ -131,6 +156,8 @@ namespace UniCAVE
                 EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(serverAddress)));
 
                 EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(serverPort)));
+
+                EditorGUILayout.PropertyField(serializedObject.FindProperty(nameof(targetFrameRate)));
 
                 serializedObject.ApplyModifiedProperties();
             }
