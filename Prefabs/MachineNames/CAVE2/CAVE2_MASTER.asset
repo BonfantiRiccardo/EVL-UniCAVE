@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e59c4b0580d8d34587f58b8d4540457, type: 3}
   m_Name: CAVE2_MASTER
   m_EditorClassIdentifier: UniCAVE::UniCAVE.MachineName
-  _name: CAVE2MASTER
+  _name: CAVE2MASTER-HOST
