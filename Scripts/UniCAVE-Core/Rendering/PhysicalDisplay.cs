@@ -80,6 +80,10 @@ namespace UniCAVE
         public bool dualPipe;
         [Tooltip("Use one instance of Unity for each eye?")]
         public bool dualInstance;
+        [Tooltip("Row-interleaved passive stereo (for micropolarized 3D displays like CAVE2 Planar panels)")]
+        public bool rowInterleaved;
+        [Tooltip("Swap which eye gets even vs odd rows (depends on panel polarizer orientation)")]
+        public bool rowInterleaveSwapEyes;
         [Tooltip("Where the window will be positioned on the screen")]
         public RectInt windowBounds;
         public RectInt leftViewport;
@@ -451,7 +455,59 @@ namespace UniCAVE
                 }
                 else
                 {
-                    if(!dualPipe && !dualInstance)
+                    if(rowInterleaved)
+                    {
+                        // Row-interleaved passive stereo for micropolarized displays (CAVE2).
+                        // Left and right eyes render to RenderTextures; a lightweight compositing
+                        // camera blits the interleaved result to the screen.
+                        leftCam = head.CreateEye(HeadConfiguration.Eyes.Left, gameObject.name);
+                        rightCam = head.CreateEye(HeadConfiguration.Eyes.Right, gameObject.name);
+
+                        int rtW = windowBounds.width  > 0 ? windowBounds.width  : Screen.width;
+                        int rtH = windowBounds.height > 0 ? windowBounds.height : Screen.height;
+
+                        leftCam.targetTexture = new RenderTexture(rtW, rtH, 24);
+                        leftCam.targetTexture.name = gameObject.name + "_LeftEyeRT";
+                        leftCam.depth = 0;
+
+                        rightCam.targetTexture = new RenderTexture(rtW, rtH, 24);
+                        rightCam.targetTexture.name = gameObject.name + "_RightEyeRT";
+                        rightCam.depth = 1;
+
+                        // Create a compositing camera that draws nothing (cullingMask = 0)
+                        // but blits the interleaved stereo result to the screen.
+                        // NOTE: clearFlags MUST NOT be Nothing - URP optimizes away cameras with
+                        // cullingMask=0 AND clearFlags=Nothing before the render graph is built,
+                        // which prevents endCameraRendering from firing. SolidColor forces URP to
+                        // execute a clear pass; our fullscreen blit then overwrites every pixel.
+                        GameObject compObj = new GameObject("Compositing Camera for: " + gameObject.name);
+                        compObj.transform.parent = head.transform;
+                        compObj.transform.localPosition = Vector3.zero;
+                        centerCam = compObj.AddComponent<Camera>();
+                        centerCam.cullingMask = 0;
+                        centerCam.clearFlags = CameraClearFlags.SolidColor;
+                        centerCam.backgroundColor = Color.black;
+                        centerCam.depth = 100;
+                        centerCam.usePhysicalProperties = false;
+                        centerCam.nearClipPlane = head.nearClippingPlane;
+                        centerCam.farClipPlane = head.farClippingPlane;
+
+                        // Add URP camera data so URP recognizes this camera.
+                        var urpData = compObj.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalCameraData>();
+                        urpData.renderType = UnityEngine.Rendering.Universal.CameraRenderType.Base;
+
+                        // Wire up the interleave blit component.
+                        var interleave = compObj.AddComponent<RowInterleaveStereo>();
+                        interleave.leftEyeCamera = leftCam;
+                        interleave.rightEyeCamera = rightCam;
+                        interleave.swapEyes = rowInterleaveSwapEyes;
+
+                        Debug.Log("Setting Display: " + gameObject.name + " to Row-Interleaved Passive Stereo (" + rtW + "x" + rtH + ")");
+#if UNITY_STANDALONE_WIN
+                        if(manager == null) WindowsUtils.SetMyWindowInfo("Row-Interleaved Stereo", windowBounds.x, windowBounds.y, windowBounds.width, windowBounds.height, 441, 411);
+#endif
+                    }
+                    else if(!dualPipe && !dualInstance)
                     {
                         leftCam = head.CreateEye(HeadConfiguration.Eyes.Left, gameObject.name);
                         rightCam = head.CreateEye(HeadConfiguration.Eyes.Right, gameObject.name);
@@ -787,38 +843,60 @@ namespace UniCAVE
                 SerializedProperty is3D = serializedObject.FindProperty(nameof(PhysicalDisplay.is3D));
                 SerializedProperty dualPipe = serializedObject.FindProperty(nameof(PhysicalDisplay.dualPipe));
                 SerializedProperty dualInstance = serializedObject.FindProperty(nameof(PhysicalDisplay.dualInstance));
+                SerializedProperty rowInterleaved = serializedObject.FindProperty(nameof(PhysicalDisplay.rowInterleaved));
+                SerializedProperty rowInterleaveSwapEyes = serializedObject.FindProperty(nameof(PhysicalDisplay.rowInterleaveSwapEyes));
                 SerializedProperty windowBounds = serializedObject.FindProperty(nameof(PhysicalDisplay.windowBounds));
 
                 EditorGUILayout.PropertyField(is3D);
 
                 if(is3D.boolValue)
                 {
-                    //draw dual pipe toggle
-                    EditorGUILayout.PropertyField(dualPipe);
+                    // Row-interleaved passive stereo (CAVE2 micropolarized panels).
+                    GUIContent rowInterleaved_content = new GUIContent(text: "Row Interleaved",
+                                                                       tooltip: "Row-interleaved passive stereo for micropolarized 3D displays (e.g. CAVE2 Planar panels). " +
+                                                                                "Even/odd pixel rows carry different eye images. Mutually exclusive with Dual Pipe.");
+                    EditorGUILayout.PropertyField(rowInterleaved, rowInterleaved_content);
 
-                    if(dualPipe.boolValue)
+                    if(rowInterleaved.boolValue)
                     {
-                        //draw dual pipe settings
-                        SerializedProperty leftViewport = serializedObject.FindProperty(nameof(PhysicalDisplay.leftViewport));
-                        SerializedProperty rightViewport = serializedObject.FindProperty(nameof(PhysicalDisplay.rightViewport));
+                        // Row-interleaved mode: show swap toggle and window bounds.
+                        // Force off dual pipe / dual instance since they are alternatives.
+                        if(dualPipe.boolValue) dualPipe.boolValue = false;
+                        if(dualInstance.boolValue) dualInstance.boolValue = false;
 
-                        EditorGUILayout.PropertyField(dualInstance);
-
-                        if(!exclusiveFullscreen.boolValue && !dualInstance.boolValue)
-                        {
-                            //3D, dual pipe, and single instance
-                            EditorGUILayout.PropertyField(windowBounds);
-                        }
-
-                        EditorGUILayout.PropertyField(leftViewport);
-                        EditorGUILayout.PropertyField(rightViewport);
+                        EditorGUILayout.PropertyField(rowInterleaveSwapEyes,
+                            new GUIContent("Swap Eyes", "Swap which eye gets even vs odd rows (depends on panel polarizer orientation)"));
+                        EditorGUILayout.PropertyField(windowBounds);
                     }
                     else
                     {
-                        //draw window settings
-                        EditorGUILayout.PropertyField(windowBounds);
+                        //draw dual pipe toggle
+                        EditorGUILayout.PropertyField(dualPipe);
 
-                        if(dualInstance.boolValue) dualInstance.boolValue = false;
+                        if(dualPipe.boolValue)
+                        {
+                            //draw dual pipe settings
+                            SerializedProperty leftViewport = serializedObject.FindProperty(nameof(PhysicalDisplay.leftViewport));
+                            SerializedProperty rightViewport = serializedObject.FindProperty(nameof(PhysicalDisplay.rightViewport));
+
+                            EditorGUILayout.PropertyField(dualInstance);
+
+                            if(!exclusiveFullscreen.boolValue && !dualInstance.boolValue)
+                            {
+                                //3D, dual pipe, and single instance
+                                EditorGUILayout.PropertyField(windowBounds);
+                            }
+
+                            EditorGUILayout.PropertyField(leftViewport);
+                            EditorGUILayout.PropertyField(rightViewport);
+                        }
+                        else
+                        {
+                            //draw window settings
+                            EditorGUILayout.PropertyField(windowBounds);
+
+                            if(dualInstance.boolValue) dualInstance.boolValue = false;
+                        }
                     }
                 }
                 else
@@ -828,6 +906,7 @@ namespace UniCAVE
 
                     if(dualPipe.boolValue) dualPipe.boolValue = false;
                     if(dualInstance.boolValue) dualInstance.boolValue = false;
+                    if(rowInterleaved.boolValue) rowInterleaved.boolValue = false;
                 }
 
 
