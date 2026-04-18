@@ -46,11 +46,9 @@ Shader "UniCAVE/RowInterleaveStereo"
             {
                 Varyings o;
                 // Fullscreen triangle: 3 vertices cover the screen.
-                // Flip UV.y: the eye RTs are rendered with GL.GetGPUProjectionMatrix
-                // (renderIntoTexture=true) by the GS pipeline, which places world-up
-                // at the BOTTOM of the RT in texture memory. We flip the sampling UV
-                // so screen top (positionCS.y = +1) samples UV.y = 1 (RT bottom =
-                // world-up), giving a right-side-up image.
+                // Flip UV.y: the eye RTs are rendered with GL.GetGPUProjectionMatrix (renderIntoTexture=true), which 
+                // places world-up at the BOTTOM of the RT in texture memory. We flip the sampling UV so screen top 
+                // (positionCS.y = +1) samples UV.y = 1 (RT bottom = world-up), giving a right-side-up image.
                 o.uv = float2((input.vertexID << 1) & 2, input.vertexID & 2);
                 o.positionCS = float4(o.uv * 2.0 - 1.0, 0.0, 1.0);
                 o.uv.y = 1.0 - o.uv.y;
