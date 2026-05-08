@@ -1,6 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace UniCAVE
 {
@@ -18,18 +20,56 @@ namespace UniCAVE
         private static extern bool SetWindowText(IntPtr hwnd, string lpString);
 
         [DllImport("user32.dll")]
-        private static extern IntPtr GetActiveWindow();
+        private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+        private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
         private static int _desiredWidth = -1, _desiredHeight = -1;
         private static int _desiredX = -1, _desiredY = -1;
         private static string _desiredName;
-        private static bool _pending = false;
+        private static bool _pending = true; // start pending to set initial size and position on first frame
         private static int _delayFrames = 0;
-        private const int DELAY = 2; // wait a couple of frames for the window to be ready
+        private const int DELAY = 2;       // min frames to wait before first attempt
+        private const int MAX_RETRIES = 60; // give up after ~1 second at 60 fps
+
+        // Find the top-level Unity window belonging to the current process.
+        // GetActiveWindow() only works for the foreground instance, which breaks
+        // multi-instance launches where only one process can be foreground at a time.
+        private static IntPtr FindMyMainWindow()
+        {
+            int myPid = Process.GetCurrentProcess().Id;
+            IntPtr found = IntPtr.Zero;
+            var classBuf = new System.Text.StringBuilder(256);
+
+            EnumWindows((hwnd, lParam) =>
+            {
+                GetWindowThreadProcessId(hwnd, out uint pid);
+                if(pid != (uint)myPid) return true;
+                if(!IsWindowVisible(hwnd)) return true;
+
+                GetClassName(hwnd, classBuf, classBuf.Capacity);
+                if(classBuf.ToString().StartsWith("UnityWndClass"))
+                {
+                    found = hwnd;
+                    return false;
+                }
+                return true;
+            }, IntPtr.Zero);
+
+            return found;
+        }
 
         /// <summary>
         /// Set the unity window's position, title, and size.
-        /// Uses GetActiveWindow to obtain the handle directly — no magic resolution trick.
         /// </summary>
         public static void SetMyWindowInfo(string text, int posX, int posY, int width, int height, int setWidth, int setHeight)
         {
@@ -50,22 +90,21 @@ namespace UniCAVE
         {
             if(!_pending) return true;
 
-            // Wait a couple of frames so the window is fully initialized
             _delayFrames++;
             if(_delayFrames < DELAY) return false;
 
-            IntPtr hwnd = GetActiveWindow();
-            if(hwnd != IntPtr.Zero)
+            IntPtr hwnd = FindMyMainWindow();
+            if(hwnd == IntPtr.Zero)
             {
-                Debug.Log("WindowsUtils: Repositioning window to " + _desiredX + "," + _desiredY + " size " + _desiredWidth + "x" + _desiredHeight);
-                SetWindowText(hwnd, _desiredName);
-                SetWindowPos(hwnd, 0, _desiredX, _desiredY, _desiredWidth, _desiredHeight, 0);
-            }
-            else
-            {
-                Debug.LogWarning("WindowsUtils: GetActiveWindow returned null, cannot reposition window.");
+                if(_delayFrames < MAX_RETRIES) return false;
+                Debug.LogWarning("WindowsUtils: could not find own Unity window after " + MAX_RETRIES + " frames, giving up.");
+                _pending = false;
+                return true;
             }
 
+            Debug.Log("WindowsUtils: Repositioning window to " + _desiredX + "," + _desiredY + " size " + _desiredWidth + "x" + _desiredHeight);
+            SetWindowText(hwnd, _desiredName);
+            SetWindowPos(hwnd, 0, _desiredX, _desiredY, _desiredWidth, _desiredHeight, 0);
             Screen.SetResolution(_desiredWidth, _desiredHeight, false);
             _pending = false;
             return true;
