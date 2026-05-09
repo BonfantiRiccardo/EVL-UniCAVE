@@ -1,0 +1,48 @@
+{
+  "Master": {
+    "Host": "CAVE2MASTER",
+    "VirtualName": "CAVE2MASTER-HOST",
+    "Headless": false
+  },
+  "DisplayNodes": {
+    "ORION-01": [
+      { "name": "ORION-01-GPU0", "gpu": 0 },
+      { "name": "ORION-01-GPU1", "gpu": 1 },
+      { "name": "ORION-01-GPU2", "gpu": 2 }
+    ],
+    "ORION-02": [
+      { "name": "ORION-02-GPU0", "gpu": 0 },
+      { "name": "ORION-02-GPU1", "gpu": 1 },
+      { "name": "ORION-02-GPU2", "gpu": 2 }
+    ],
+    "ORION-03": [
+      { "name": "ORION-03-GPU0", "gpu": 0 },
+      { "name": "ORION-03-GPU1", "gpu": 1 },
+      { "name": "ORION-03-GPU2", "gpu": 2 }
+    ],
+    "ORION-04": [
+      { "name": "ORION-04-GPU0", "gpu": 0 },
+      { "name": "ORION-04-GPU1", "gpu": 1 },
+      { "name": "ORION-04-GPU2", "gpu": 2 }
+    ],
+    "ORION-05": [
+      { "name": "ORION-05-GPU0", "gpu": 0 },
+      { "name": "ORION-05-GPU1", "gpu": 1 },
+      { "name": "ORION-05-GPU2", "gpu": 2 }
+    ],
+    "ORION-06": [
+      { "name": "ORION-06-GPU0", "gpu": 0 },
+      { "name": "ORION-06-GPU1", "gpu": 1 },
+      { "name": "ORION-06-GPU2", "gpu": 2 }
+    ],
+    "ORION": [
+      { "name": "ORION-GPU0", "gpu": 0 },
+      { "name": "ORION-GPU1", "gpu": 1 },
+      { "name": "ORION-GPU2", "gpu": 2 },
+      { "name": "ORION-GPU3", "gpu": 3 }
+    ]
+  },
+  "ExeName": "UniCAVE-GS.exe",
+  "ServerAddress": "10.0.0.175",
+  "ServerPort": 7777
+}
