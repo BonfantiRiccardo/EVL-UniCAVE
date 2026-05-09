@@ -36,6 +36,7 @@ namespace UniCAVE
             {
                 string name = Path.GetFileName(src);
                 if(name.Equals("README.md", System.StringComparison.OrdinalIgnoreCase)) continue;
+                if(name.EndsWith(".meta", System.StringComparison.OrdinalIgnoreCase)) continue;
                 string dst = Path.Combine(buildDir, name);
                 File.Copy(src, dst, overwrite: true);
                 copied++;
