@@ -40,7 +40,7 @@ namespace UniCAVE
 
         [Header("Movement")]
         [Tooltip("Translation speed in meters per second")]
-        public float moveSpeed = 3f;
+        public float moveSpeed = 1f;
 
         [Tooltip("Dead zone for the left stick (combined magnitude)")]
         public float deadZone = 0.15f;

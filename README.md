@@ -15,7 +15,7 @@ GameObjects and URP. Adds:
   built `.exe` by an editor post-build hook, so a synced build folder on a
   cluster node is fully self-contained.
 
-Upstream stopped active maintenance around April 2021 against Unity
+Upstream stopped active maintenance around July 2023 against Unity
 2019.4 / 2021 LTS and the Multiplayer HLAPI; opening it in Unity 6
 produces compile errors. This fork is what we use on EVL's
 CAVE2 cluster.

@@ -1,0 +1,291 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2590763578624565944
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6020374306186848244}
+  - component: {fileID: 4412450570072875863}
+  - component: {fileID: 7262014202072500315}
+  - component: {fileID: 4061323027788515521}
+  - component: {fileID: 9166121861844683177}
+  - component: {fileID: 4219503477376242526}
+  m_Layer: 0
+  m_Name: PROJECTOR
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6020374306186848244
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2590763578624565944}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: -0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 8424028546824443700}
+  - {fileID: 7374846605846695683}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &4412450570072875863
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2590763578624565944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
+  GlobalObjectIdHash: 3390944714
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  DeferredDespawnTick: 0
+  Ownership: 1
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 0
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
+  SyncOwnerTransformWhenParented: 1
+  AllowOwnerToParent: 0
+--- !u!114 &7262014202072500315
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2590763578624565944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73411c8d62ce8b44d93837ed36c78500, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.UCNetwork
+  ShowTopMostFoldoutHeaderGroup: 1
+  head: {fileID: 399297356162408594}
+  enableManualNavigation: 1
+  navMoveSpeed: 1
+  navRotateSpeed: 15
+  navSprintMultiplier: 2
+  gamepadDeadZone: 0.15
+  settingsToLoad: 
+--- !u!114 &4061323027788515521
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2590763578624565944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1caad0495bfcd6043ba1a208fb59a516, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.NetworkInitialization
+  networkManager: {fileID: 0}
+  targetFrameRate: 240
+  oldHeadMachine: C6_V1_HEAD
+  headMachineAsset: {fileID: 11400000, guid: c321a3de7ecf8e240a11544661369cba, type: 2}
+  serverAddress: 127.0.0.1
+  serverPort: 6543
+--- !u!114 &9166121861844683177
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2590763578624565944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 496995567e4fd9e4caaed411cc6718ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.RealtimeCalibrator
+  ShowTopMostFoldoutHeaderGroup: 1
+  selectedIndex: 0
+  lastSelectedIndex: 0
+  vertexIndex: 0
+  infoDisplay: {fileID: 0}
+  logMovementDebug: 0
+  configsFolder: configs
+--- !u!114 &4219503477376242526
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2590763578624565944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5460c4ee487c0a4fba8d84e446afee1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.CAVENavigator
+  ShowTopMostFoldoutHeaderGroup: 1
+  moveSpeed: 2
+  sprintMultiplier: 3
+  rotateSpeed: 20
+  verticalSpeed: 1.5
+  stickDeadZone: 0.15
+--- !u!1 &4919907118929525758
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7374846605846695683}
+  - component: {fileID: 7668517549580755180}
+  - component: {fileID: 6005619312800102221}
+  m_Layer: 0
+  m_Name: Display
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7374846605846695683
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4919907118929525758}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
+  m_LocalPosition: {x: 0, y: 2, z: -3}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6020374306186848244}
+  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+--- !u!114 &7668517549580755180
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4919907118929525758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 06d302fe38494b0458593189ecf4fe40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.PhysicalDisplay
+  manager: {fileID: 0}
+  oldMachineName: 
+  machineNameAsset: {fileID: 11400000, guid: c321a3de7ecf8e240a11544661369cba, type: 2}
+  width: 2.2
+  height: 1.24
+  head: {fileID: 399297356162408594}
+  useXRCameras: 0
+  useRenderTextures: 0
+  renderTextureSize: {x: 0, y: 0}
+  is3D: 1
+  exclusiveFullscreen: 1
+  display: 0
+  dualPipe: 1
+  dualInstance: 0
+  rowInterleaved: 0
+  rowInterleaveSwapEyes: 0
+  windowBounds:
+    x: 0
+    y: 0
+    width: 3840
+    height: 2160
+  leftViewport:
+    x: 0
+    y: 0
+    width: 1920
+    height: 2160
+  rightViewport:
+    x: 1920
+    y: 0
+    width: 1920
+    height: 2160
+  loadSettingsAtRuntime: 0
+  serializedLocation: settings.json
+--- !u!114 &6005619312800102221
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4919907118929525758}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91f7d318900abf040bc9683e1d62f191, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.PhysicalDisplayCalibration
+  postProcessLayer: 10
+  postProcessMaterial: {fileID: 0}
+  rightBlend: 0
+  topBlend: 0
+  leftBlend: 0
+  bottomBlend: 0
+  resolution: {x: 3840, y: 2160}
+  camChild: {fileID: 0}
+  postCams: []
+  dewarpMeshPositions:
+    verts: []
+    generatedVerts: []
+--- !u!1 &5925637120095547647
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8424028546824443700}
+  - component: {fileID: 399297356162408594}
+  m_Layer: 0
+  m_Name: Head
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8424028546824443700
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5925637120095547647}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 1.75, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6020374306186848244}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &399297356162408594
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5925637120095547647}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2480a01dcd559f4c9192fc3c50eeed9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.HeadConfiguration
+  camPrefab: {fileID: 5215705229011010987, guid: b4f4893f7df2a6747936f74bddd714d8, type: 3}
+  leftEyeOffset: {x: -0.032, y: 0, z: 0}
+  rightEyeOffset: {x: 0.032, y: 0, z: 0}
+  nearClippingPlane: 0.01
+  farClippingPlane: 1000

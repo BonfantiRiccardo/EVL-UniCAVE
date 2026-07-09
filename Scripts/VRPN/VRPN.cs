@@ -84,10 +84,13 @@ namespace UniCAVE
             if(!_dllAvailable) return Vector3.zero;
             try
             {
+                // Vicon (Y-up, meters, right-handed) -> Unity (Y-up, left-handed):
+                // flip Z only. x = vicon.x, y = vicon.y, z = -vicon.z. Confirmed with a
+                // CAVE2 cube parallax test on 2026-07-08.
                 return new Vector3(
+                    (float)vrpnTrackerExtern(address, channel, 0, Time.frameCount),
                     (float)vrpnTrackerExtern(address, channel, 1, Time.frameCount),
-                    -(float)vrpnTrackerExtern(address, channel, 2, Time.frameCount),
-                    (float)vrpnTrackerExtern(address, channel, 0, Time.frameCount));
+                    -(float)vrpnTrackerExtern(address, channel, 2, Time.frameCount));
             }
             catch(System.DllNotFoundException e) { LogDllWarning(e); return Vector3.zero; }
             catch(System.EntryPointNotFoundException e) { LogDllWarning(e); return Vector3.zero; }
@@ -98,11 +101,16 @@ namespace UniCAVE
             if(!_dllAvailable) return Quaternion.identity;
             try
             {
+                // Match the position mapping (flip Z only, right-handed -> left-handed):
+                // (qx,qy,qz,qw) -> (-qx,-qy,qz,qw). The Wand_Batman rigid-body local
+                // axes may still be offset from the wand's physical "forward" - align
+                // that with VRPNTrack.trackerRotationOffset. If rotation comes out
+                // MIRRORED, try (qx, qy, -qz, -qw) instead.
                 return new Quaternion(
-                    (float)vrpnTrackerExtern(address, channel, 4, Time.frameCount),
-                    -(float)vrpnTrackerExtern(address, channel, 5, Time.frameCount),
-                    (float)vrpnTrackerExtern(address, channel, 3, Time.frameCount),
-                    -(float)vrpnTrackerExtern(address, channel, 6, Time.frameCount));
+                    -(float)vrpnTrackerExtern(address, channel, 3, Time.frameCount),
+                    -(float)vrpnTrackerExtern(address, channel, 4, Time.frameCount),
+                    (float)vrpnTrackerExtern(address, channel, 5, Time.frameCount),
+                    (float)vrpnTrackerExtern(address, channel, 6, Time.frameCount));
             }
             catch(System.DllNotFoundException e) { LogDllWarning(e); return Quaternion.identity; }
             catch(System.EntryPointNotFoundException e) { LogDllWarning(e); return Quaternion.identity; }

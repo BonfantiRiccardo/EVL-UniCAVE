@@ -1399,14 +1399,14 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5902906138758734515}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4d36101d51cb2b747ae3a94ccc7d37a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.VRPNTrack
   ShowTopMostFoldoutHeaderGroup: 1
-  trackerAddress: Wand_Batman@10.0.0.207
-  channel: 1
+  trackerAddress: Wand_Batman@TRACKER_HOST
+  channel: 0
   trackPosition: 1
   trackRotation: 1
   trackerPositionOffset: {x: 0, y: 0, z: 0}
@@ -1776,13 +1776,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6130017897454802015}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4d36101d51cb2b747ae3a94ccc7d37a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.VRPNTrack
   ShowTopMostFoldoutHeaderGroup: 1
-  trackerAddress: Head_Tracker@10.0.0.207
+  trackerAddress: Head_Tracker@TRACKER_HOST
   channel: 0
   trackPosition: 1
   trackRotation: 1
@@ -2178,7 +2178,7 @@ GameObject:
   - component: {fileID: 2370533430230512789}
   - component: {fileID: 3273338556149026758}
   - component: {fileID: 7074373084133252954}
-  - component: {fileID: 7246831591292087748}
+  - component: {fileID: 1088019340149064979}
   m_Layer: 0
   m_Name: CAVE2
   m_TagString: Untagged
@@ -2199,8 +2199,8 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 6666066506606236530}
   - {fileID: 2899470805776604716}
+  - {fileID: 6666066506606236530}
   - {fileID: 3778929115430440453}
   - {fileID: 6219738820163259693}
   - {fileID: 7877914210968997990}
@@ -2222,7 +2222,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 265220460
+  GlobalObjectIdHash: 537779916
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2249,6 +2249,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: UniCAVE::UniCAVE.UCNetwork
   ShowTopMostFoldoutHeaderGroup: 1
   head: {fileID: 3616063326176451097}
+  enableManualNavigation: 1
+  navMoveSpeed: 2
+  navRotateSpeed: 30
+  navSprintMultiplier: 2
+  gamepadDeadZone: 0.15
   settingsToLoad: 
 --- !u!114 &3273338556149026758
 MonoBehaviour:
@@ -2287,28 +2292,25 @@ MonoBehaviour:
   infoDisplay: {fileID: 0}
   logMovementDebug: 1
   configsFolder: configs
---- !u!114 &7246831591292087748
+--- !u!114 &1088019340149064979
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7851983900161051920}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cb3f7257d46d9d4499574dc8b8439a38, type: 3}
+  m_Script: {fileID: 11500000, guid: a9f6f02dffaf5814ab0de75605290cf9, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: UniCAVE::UniCAVE.WandLocomotion
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.GamepadLocomotion
   ShowTopMostFoldoutHeaderGroup: 1
-  wand: {fileID: 6666066506606236530}
-  analogDevice: Head_Tracker@10.0.0.207
-  strafeAxis: 0
-  forwardAxis: 1
-  moveSpeed: 3
-  deadZone: 0.15
+  directionSource: {fileID: 2899470805776604716}
+  moveSpeed: 1
+  deadZone: 0.1
   horizontalOnly: 1
-  invertStrafe: 1
-  invertForward: 1
+  invertStrafe: 0
+  invertForward: 0
 --- !u!1 &8346953975490908479
 GameObject:
   m_ObjectHideFlags: 0

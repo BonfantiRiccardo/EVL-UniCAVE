@@ -34,6 +34,24 @@ namespace UniCAVE
         [Tooltip("This object will be transformed by this script")]
         public HeadConfiguration head;
 
+        [Header("Manual Navigation (KEYBOARD-ONLY desktop fallback)")]
+        [Tooltip("If enabled, the head machine drives the CAVE root with WASD/Q-E/arrow keys for desktop testing. " +
+                 "The GAMEPAD is intentionally NOT read here - GamepadLocomotion owns it, so the two never fight over the root. " +
+                 "Movement is broadcast to all clients automatically.")]
+        public bool enableManualNavigation = true;
+
+        [Tooltip("Translation speed in meters/second")]
+        public float navMoveSpeed = 1.0f;
+
+        [Tooltip("Rotation speed in degrees/second")]
+        public float navRotateSpeed = 15.0f;
+
+        [Tooltip("Hold Shift (keyboard) or a shoulder button (gamepad) to multiply movement speed by this factor")]
+        public float navSprintMultiplier = 2.0f;
+
+        [Tooltip("Ignore gamepad stick input below this magnitude (0-1)")]
+        public float gamepadDeadZone = 0.15f;
+
         private float lastTime = 0.0f;
 
         private bool syncedRandomSeed = false;
@@ -69,6 +87,10 @@ namespace UniCAVE
                     return;
                 }
 
+                // Fallback navigation: drive the CAVE root from the keyboard on the
+                // server. The updated transform is broadcast below, so all clients follow.
+                HandleManualNavigation();
+
                 if(head != null)
                 {
                     SetTransformsClientRpc(transform.position, transform.rotation, head.transform.position, head.transform.rotation);
@@ -88,6 +110,70 @@ namespace UniCAVE
 
                 frameCount++;
             }
+        }
+
+        /// <summary>
+        /// Server-only keyboard navigation, used when live tracking is unavailable.
+        /// WASD translates and Q/E raise/lower the CAVE root; the arrow keys rotate it.
+        /// Because this runs on the server and mutates "transform", the movement is
+        /// replicated to every client by <see cref="SetTransformsClientRpc"/> each frame.
+        /// </summary>
+        void HandleManualNavigation()
+        {
+            if(!enableManualNavigation) return;
+
+            float dt = Time.deltaTime;
+
+            // Accumulated intent from all devices this frame.
+            Vector2 moveInput = Vector2.zero;   // x = strafe (right +), y = forward (+)
+            Vector2 lookInput = Vector2.zero;   // x = yaw (right +), y = pitch (nose up +)
+            float verticalInput = 0f;           // up +, down -
+            bool sprint = false;
+
+            // --- Keyboard: WASD move, Q/E up-down, arrow keys rotate ---
+            Keyboard kb = Keyboard.current;
+            if(kb != null)
+            {
+                if(kb.wKey.isPressed) moveInput.y += 1f;
+                if(kb.sKey.isPressed) moveInput.y -= 1f;
+                if(kb.dKey.isPressed) moveInput.x += 1f;
+                if(kb.aKey.isPressed) moveInput.x -= 1f;
+
+                if(kb.rightArrowKey.isPressed) lookInput.x += 1f;
+                if(kb.leftArrowKey.isPressed) lookInput.x -= 1f;
+                if(kb.upArrowKey.isPressed) lookInput.y += 1f;
+                if(kb.downArrowKey.isPressed) lookInput.y -= 1f;
+
+                if(kb.eKey.isPressed) verticalInput += 1f;
+                if(kb.qKey.isPressed) verticalInput -= 1f;
+
+                if(kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed) sprint = true;
+            }
+
+            // NOTE: the gamepad is deliberately NOT read here. GamepadLocomotion owns
+            // Gamepad.current so two scripts never move the root from the same stick.
+            // This manual nav is keyboard-only (desktop testing fallback).
+
+            moveInput = Vector2.ClampMagnitude(moveInput, 1f);
+            lookInput = Vector2.ClampMagnitude(lookInput, 1f);
+            verticalInput = Mathf.Clamp(verticalInput, -1f, 1f);
+
+            float speed = navMoveSpeed * (sprint ? navSprintMultiplier : 1f);
+
+            // Rotation: yaw about world up, pitch about local right. A positive lookInput.y
+            // ("nose up") is a negative rotation about the local right axis in Unity.
+            if(Mathf.Abs(lookInput.x) > 0.001f)
+                transform.Rotate(Vector3.up, lookInput.x * navRotateSpeed * dt, Space.World);
+            if(Mathf.Abs(lookInput.y) > 0.001f)
+                transform.Rotate(Vector3.right, -lookInput.y * navRotateSpeed * dt, Space.Self);
+
+            // Translation. If a direction feels reversed for your rig, flip the sign on
+            // that axis -- it depends on how the CAVE root is oriented.
+            Vector3 move = (transform.forward * moveInput.y)
+                         + (transform.right * moveInput.x)
+                         + (Vector3.up * verticalInput);
+            if(move.sqrMagnitude > 0.000001f)
+                transform.position += move * speed * dt;
         }
 
         /// <summary>
@@ -367,6 +453,18 @@ namespace UniCAVE
                 UCNetwork cave = target as UCNetwork;
 
                 cave.head = (HeadConfiguration)EditorGUILayout.ObjectField("Head", cave.head, typeof(HeadConfiguration), true);
+
+                EditorGUILayout.Space();
+                EditorGUILayout.LabelField("Manual Navigation (keyboard / gamepad fallback)", EditorStyles.boldLabel);
+                cave.enableManualNavigation = EditorGUILayout.Toggle(new GUIContent("Enable Manual Navigation", "Drive the CAVE root with WASD/Q-E/arrow keys and a gamepad on the head machine. Turn off when live tracking is working."), cave.enableManualNavigation);
+                using(new EditorGUI.DisabledScope(!cave.enableManualNavigation))
+                {
+                    cave.navMoveSpeed = EditorGUILayout.FloatField(new GUIContent("Move Speed", "Translation speed in meters/second"), cave.navMoveSpeed);
+                    cave.navRotateSpeed = EditorGUILayout.FloatField(new GUIContent("Rotate Speed", "Rotation speed in degrees/second"), cave.navRotateSpeed);
+                    cave.navSprintMultiplier = EditorGUILayout.FloatField(new GUIContent("Sprint Multiplier", "Shift key / shoulder button speed multiplier"), cave.navSprintMultiplier);
+                    cave.gamepadDeadZone = EditorGUILayout.Slider(new GUIContent("Gamepad Dead Zone", "Ignore gamepad stick input below this magnitude"), cave.gamepadDeadZone, 0f, 0.9f);
+                }
+                EditorGUILayout.Space();
 
                 if(GUILayout.Button("Save Launch Script"))
                 {

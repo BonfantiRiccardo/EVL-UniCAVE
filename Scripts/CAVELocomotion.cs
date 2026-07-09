@@ -5,20 +5,24 @@ namespace UniCAVE
 {
     /// <summary>
     /// VRPN-based locomotion for the UniCAVE root.
-    /// Reads analog channels for sticks and triggers, and a button for sprint.
+    /// Reads a VRPN gamepad's analog sticks/triggers (and a sprint button) and
+    /// drives the CAVE root. Server-only; UCNetwork replicates the root transform
+    /// to every display node.
     ///
-    /// Mapping:
-    ///   Left stick  -> position (strafe + forward/back)
-    ///   Right stick -> rotation (yaw + pitch)
-    ///   LT2         -> move down
-    ///   RT2         -> move up
-    ///   LT1         -> sprint (speed multiplier)
+    /// IMPORTANT: analogDevice/buttonDevice must point at a VRPN device that
+    /// actually carries button/analog channels (a gamepad). Vicon Tracker's VRPN
+    /// output is POSE-ONLY, so Head_Tracker / Wand_Batman will NOT work here.
+    /// Source the stick from Omicron's VRPNDevice (its VRPN gamepad output) or a
+    /// standalone gamepad vrpn_server. Until that source exists these reads return
+    /// 0 and the CAVE simply won't move (pose tracking is unaffected).
+    ///
+    /// Attach to the UniCAVE root (same GameObject as UCNetwork).
     /// </summary>
-    public class VRPNLocomotion : NetworkBehaviour
+    public class CAVELocomotion : NetworkBehaviour
     {
-        [Header("VRPN Device")]
-        public string analogDevice = "Controller0@localhost";
-        public string buttonDevice = "Controller0@localhost";
+        [Header("VRPN gamepad device (NOT a Vicon pose device)")]
+        public string analogDevice = "Controller0@TRACKER_HOST";
+        public string buttonDevice = "Controller0@TRACKER_HOST";
 
         [Header("Analog Channels")]
         [Tooltip("Left stick X (strafe)")]
@@ -29,13 +33,13 @@ namespace UniCAVE
         public int yawAxis      = 2;
         [Tooltip("Right stick Y (pitch)")]
         public int pitchAxis    = 3;
-        [Tooltip("Left trigger LT2 (move down)")]
+        [Tooltip("Left trigger (move down)")]
         public int leftTriggerAxis  = 5;
-        [Tooltip("Right trigger RT2 (move up)")]
+        [Tooltip("Right trigger (move up)")]
         public int rightTriggerAxis = 4;
 
-        [Header("Button Channels")]
-        [Tooltip("Left bumper LT1 (sprint)")]
+        [Header("Button")]
+        [Tooltip("Sprint (speed multiplier while held)")]
         public int sprintButton = 4;
 
         [Header("Speeds")]
@@ -47,12 +51,9 @@ namespace UniCAVE
         [Header("Options")]
         [Tooltip("Dead zone for analog sticks")]
         public float deadZone = 0.15f;
-
-        [Tooltip("Invert left stick X")]
-        public bool invertMoveX = true;
-        [Tooltip("Invert left stick Y (enable if stick-up returns negative)")]
-        public bool invertMoveY = true;
-        [Tooltip("Invert right stick Y (enable if stick-up returns negative)")]
+        public bool invertMoveX  = true;
+        [Tooltip("Enable if pushing the stick up returns a negative value")]
+        public bool invertMoveY  = true;
         public bool invertPitchY = false;
 
         void Update()
@@ -61,7 +62,7 @@ namespace UniCAVE
 
             float dt = Time.deltaTime;
 
-            // Read all analog channels
+            // Read analog channels from the VRPN gamepad
             float lx = (float)VRPN.vrpnAnalog(analogDevice, strafeAxis);
             float ly = (float)VRPN.vrpnAnalog(analogDevice, forwardAxis);
             float rx = (float)VRPN.vrpnAnalog(analogDevice, yawAxis);
@@ -89,10 +90,8 @@ namespace UniCAVE
             if(look.magnitude > deadZone)
             {
                 look = Vector2.ClampMagnitude(look, 1f);
-                // Yaw around world Y
-                transform.Rotate(0f, look.x * turnSpeed * dt, 0f, Space.World);
-                // Pitch around local right axis
-                transform.Rotate(look.y * turnSpeed * dt, 0f, 0f, Space.Self);
+                transform.Rotate(0f, look.x * turnSpeed * dt, 0f, Space.World);   // yaw around world up
+                transform.Rotate(look.y * turnSpeed * dt, 0f, 0f, Space.Self);    // pitch around local right
             }
 
             // --- Vertical (triggers) ---
