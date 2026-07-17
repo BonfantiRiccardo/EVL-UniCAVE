@@ -36,7 +36,7 @@ namespace UniCAVE
         private static int _desiredWidth = -1, _desiredHeight = -1;
         private static int _desiredX = -1, _desiredY = -1;
         private static string _desiredName;
-        private static bool _pending = true; // start pending to set initial size and position on first frame
+        private static bool _pending = false; // only reposition once SetMyWindowInfo supplies real bounds
         private static int _delayFrames = 0;
         private const int DELAY = 2;       // min frames to wait before first attempt
         private const int MAX_RETRIES = 60; // give up after ~1 second at 60 fps
@@ -89,6 +89,16 @@ namespace UniCAVE
         public static bool CompletedOperation()
         {
             if(!_pending) return true;
+
+            // Never reposition with unset/invalid dimensions. This guards managed
+            // (CAVE2) and exclusive-fullscreen displays, which never call
+            // SetMyWindowInfo and would otherwise get SetWindowPos(-1,-1,-1,-1)
+            // plus Screen.SetResolution(-1,-1), collapsing the window/backbuffer.
+            if(_desiredWidth <= 0 || _desiredHeight <= 0)
+            {
+                _pending = false;
+                return true;
+            }
 
             _delayFrames++;
             if(_delayFrames < DELAY) return false;
