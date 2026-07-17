@@ -2222,7 +2222,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 537779916
+  GlobalObjectIdHash: 1053636384
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2250,8 +2250,8 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   head: {fileID: 3616063326176451097}
   enableManualNavigation: 1
-  navMoveSpeed: 2
-  navRotateSpeed: 30
+  navMoveSpeed: 1
+  navRotateSpeed: 15
   navSprintMultiplier: 2
   gamepadDeadZone: 0.15
   settingsToLoad: 
@@ -2311,6 +2311,9 @@ MonoBehaviour:
   horizontalOnly: 1
   invertStrafe: 0
   invertForward: 0
+  turnSpeed: 10
+  invertTurn: 0
+  verticalSpeed: 1
 --- !u!1 &8346953975490908479
 GameObject:
   m_ObjectHideFlags: 0
