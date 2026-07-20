@@ -2179,6 +2179,8 @@ GameObject:
   - component: {fileID: 3273338556149026758}
   - component: {fileID: 7074373084133252954}
   - component: {fileID: 1088019340149064979}
+  - component: {fileID: 3553445376671367752}
+  - component: {fileID: 5433479464422604797}
   m_Layer: 0
   m_Name: CAVE2
   m_TagString: Untagged
@@ -2314,6 +2316,66 @@ MonoBehaviour:
   turnSpeed: 10
   invertTurn: 0
   verticalSpeed: 1
+--- !u!114 &3553445376671367752
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7851983900161051920}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1eb6c506b05d4a43a017bc1e289ab99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GaussianSplatting.GSBenchmarkController
+  ShowTopMostFoldoutHeaderGroup: 1
+  autoNavigator: {fileID: 5433479464422604797}
+  logToggles: 1
+--- !u!114 &5433479464422604797
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7851983900161051920}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61f55b8397232be48aff5298c31f7c02, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.AutoNavigator
+  ShowTopMostFoldoutHeaderGroup: 1
+  segments:
+  - kind: 0
+    meters: 2
+    rightMeters: 0
+    degrees: 90
+    seconds: 1
+  - kind: 2
+    meters: 1
+    rightMeters: 0
+    degrees: 90
+    seconds: 1
+  - kind: 5
+    meters: 1
+    rightMeters: 0
+    degrees: 180
+    seconds: 1
+  - kind: 4
+    meters: 1
+    rightMeters: -1
+    degrees: 90
+    seconds: 1
+  - kind: 6
+    meters: 1
+    rightMeters: 0
+    degrees: 90
+    seconds: 2
+  moveSpeed: 1
+  turnSpeed: 10
+  invertForward: 1
+  invertRight: 1
+  allowKeyboardTrigger: 0
+  runOnStart: 0
 --- !u!1 &8346953975490908479
 GameObject:
   m_ObjectHideFlags: 0
