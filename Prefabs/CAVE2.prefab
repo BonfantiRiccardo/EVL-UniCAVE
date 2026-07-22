@@ -1405,7 +1405,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.VRPNTrack
   ShowTopMostFoldoutHeaderGroup: 1
-  trackerAddress: Wand_Batman@TRACKER_HOST
+  trackerAddress: Wand_Robin@TRACKER_HOST
   channel: 0
   trackPosition: 1
   trackRotation: 1
@@ -2181,6 +2181,7 @@ GameObject:
   - component: {fileID: 1088019340149064979}
   - component: {fileID: 3553445376671367752}
   - component: {fileID: 5433479464422604797}
+  - component: {fileID: 4190087043327839483}
   m_Layer: 0
   m_Name: CAVE2
   m_TagString: Untagged
@@ -2224,7 +2225,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 1053636384
+  GlobalObjectIdHash: 537779916
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2376,6 +2377,51 @@ MonoBehaviour:
   invertRight: 1
   allowKeyboardTrigger: 0
   runOnStart: 0
+--- !u!114 &4190087043327839483
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7851983900161051920}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb3f7257d46d9d4499574dc8b8439a38, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.WandLocomotion
+  ShowTopMostFoldoutHeaderGroup: 1
+  wand: {fileID: 6666066506606236530}
+  turnPivot: {fileID: 2899470805776604716}
+  analogDevice: Navigation@TRACKER_HOST:3894
+  buttonDevice: Navigation@TRACKER_HOST:3894
+  strafeAxis: 0
+  forwardAxis: 1
+  arrowStrafeAxis: -1
+  arrowForwardAxis: -1
+  arrowUpButton: 3
+  arrowDownButton: 4
+  arrowLeftButton: 5
+  arrowRightButton: 6
+  arrowStrafeAction: 1
+  arrowForwardAction: 2
+  sprintButton: 2
+  resetButton: 1
+  moveSpeed: 1
+  turnSpeed: 10
+  verticalSpeed: 1
+  sprintMultiplier: 1.5
+  deadZone: 0.15
+  horizontalOnly: 1
+  invertStrafe: 0
+  invertForward: 1
+  invertArrowStrafe: 0
+  invertArrowForward: 0
+  invertTurn: 0
+  holdLastValue: 1
+  holdTime: 0.15
+  debugLogChannels: 0
+  debugChannelCount: 8
+  debugButtonCount: 12
 --- !u!1 &8346953975490908479
 GameObject:
   m_ObjectHideFlags: 0
