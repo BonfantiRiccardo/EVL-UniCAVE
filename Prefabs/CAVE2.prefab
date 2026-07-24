@@ -61,6 +61,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -163,6 +164,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -299,6 +301,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -401,6 +404,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -503,6 +507,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -605,6 +610,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -741,6 +747,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -911,6 +918,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -1013,6 +1021,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 0
@@ -1115,6 +1124,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -1217,6 +1227,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -1319,6 +1330,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -1474,6 +1486,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -1576,6 +1589,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 2304
@@ -1678,6 +1692,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -1851,6 +1866,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -1953,6 +1969,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 1536
@@ -2019,7 +2036,7 @@ Transform:
   m_GameObject: {fileID: 6603003908786888502}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: -0.35, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2090,6 +2107,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 768
@@ -2225,7 +2243,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 537779916
+  GlobalObjectIdHash: 4162407135
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2483,6 +2501,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -2585,6 +2604,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -2687,6 +2707,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -2789,6 +2810,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304

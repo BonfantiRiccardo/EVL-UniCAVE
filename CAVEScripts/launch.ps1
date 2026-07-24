@@ -68,7 +68,29 @@ function Get-MonitorForGpu([string]$node, [int]$gpu) {
     return Get-TopMonitorOnColumn $colX
 }
 
-function Start-Instance([string]$virtualName, [int]$gpu = -1, [switch]$Batch, [switch]$SmallWindow) {
+# Move a launched instance's main window to the top-left corner (0,0) at the given size.
+# Unity's -popupwindow opens the window centered and provides no -screen-x/-y arg, so we
+# reposition it with a Win32 MoveWindow once its window handle exists (poll up to ~10s).
+function Move-WindowTopLeft([int]$procId, [int]$w, [int]$h) {
+    if (-not ('UniCaveNative.Win' -as [type])) {
+        Add-Type -Namespace 'UniCaveNative' -Name 'Win' -MemberDefinition @'
+[DllImport("user32.dll")]
+public static extern bool MoveWindow(System.IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+'@
+    }
+    for ($i = 0; $i -lt 50; $i++) {
+        $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
+        if (-not $proc) { return }
+        $proc.Refresh()
+        if ($proc.MainWindowHandle -ne [System.IntPtr]::Zero) {
+            [void][UniCaveNative.Win]::MoveWindow($proc.MainWindowHandle, 0, 0, $w, $h, $true)
+            return
+        }
+        Start-Sleep -Milliseconds 200
+    }
+}
+
+function Start-Instance([string]$virtualName, [int]$gpu = -1, [switch]$Batch, [switch]$MasterWindow) {
     $logFile = Join-Path $logDir "$virtualName.log"
     $argList = @()
     if ($Batch) { $argList += @('-batchmode', '-nographics') }
@@ -79,9 +101,17 @@ function Start-Instance([string]$virtualName, [int]$gpu = -1, [switch]$Batch, [s
         '-logFile',            $logFile
     )
     $monitor = -1
-    if ($SmallWindow) {
+    $winW = 0
+    $winH = 0
+    if ($MasterWindow) {
+        # Left third of the master's primary screen: a full-height column so the perf
+        # overlay (now with many fields) has the vertical room to lay out without the
+        # lines overlapping. Repositioned to (0,0) after launch (see Move-WindowTopLeft).
+        $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+        $winW = [int]($bounds.Width / 3)
+        $winH = $bounds.Height
         $argList += @('-popupwindow', '-screen-fullscreen', '0',
-                      '-screen-width', '640', '-screen-height', '360')
+                      '-screen-width', $winW, '-screen-height', $winH)
     } elseif ($gpu -ge 0) {
         $monitor = Get-MonitorForGpu $me $gpu
         $argList += @('-force-device-index', $gpu, '-monitor', $monitor, '-popupwindow')
@@ -95,13 +125,14 @@ function Start-Instance([string]$virtualName, [int]$gpu = -1, [switch]$Batch, [s
     }
     $p = Start-Process -FilePath $exe -ArgumentList $argList -PassThru
     Write-Host "[$me] $virtualName pid=$($p.Id) gpu=$gpu monitor=$monitor log=$logFile"
+    if ($MasterWindow) { Move-WindowTopLeft $p.Id $winW $winH }
 }
 
 if ($isMaster) {
     if ($cfg.Master.Headless) {
         Start-Instance $cfg.Master.VirtualName -Batch
     } else {
-        Start-Instance $cfg.Master.VirtualName -SmallWindow
+        Start-Instance $cfg.Master.VirtualName -MasterWindow
     }
     return
 }
