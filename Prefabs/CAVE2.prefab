@@ -61,7 +61,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -164,7 +163,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -301,7 +299,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -404,7 +401,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -507,7 +503,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -610,7 +605,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -747,7 +741,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -918,7 +911,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -987,7 +979,7 @@ Transform:
   m_GameObject: {fileID: 4186868567835163933}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 0, y: 2.3025, z: -6}
+  m_LocalPosition: {x: 0, y: 2.3025, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1021,7 +1013,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 0
@@ -1124,7 +1115,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -1227,7 +1217,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -1330,7 +1319,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -1486,7 +1474,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -1555,7 +1542,7 @@ Transform:
   m_GameObject: {fileID: 6054647899746757974}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 0, y: 0.5775, z: -6}
+  m_LocalPosition: {x: 0, y: 0.5775, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1589,7 +1576,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 2304
@@ -1692,7 +1678,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -1866,7 +1851,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 2732
     y: -2304
@@ -1935,7 +1919,7 @@ Transform:
   m_GameObject: {fileID: 6550416015228477310}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 0, y: 1.1525, z: -6}
+  m_LocalPosition: {x: 0, y: 1.1525, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1969,7 +1953,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 1536
@@ -2035,8 +2018,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6603003908786888502}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.35, y: 0, z: 0}
+  m_LocalRotation: {x: 0, y: 0.10452846, z: 0, w: 0.9945219}
+  m_LocalPosition: {x: -0.35, y: 0, z: -6.7}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2045,7 +2028,7 @@ Transform:
   - {fileID: 5510391596251766882}
   - {fileID: 3684339070153954298}
   m_Father: {fileID: 8419331132357242921}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 12, z: 0}
 --- !u!1 &7260710819007830723
 GameObject:
   m_ObjectHideFlags: 0
@@ -2073,7 +2056,7 @@ Transform:
   m_GameObject: {fileID: 7260710819007830723}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: 0, y: 1.7275, z: -6}
+  m_LocalPosition: {x: 0, y: 1.7275, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2107,7 +2090,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: 768
@@ -2243,7 +2225,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 4162407135
+  GlobalObjectIdHash: 537779916
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2501,7 +2483,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -2604,7 +2585,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
@@ -2707,7 +2687,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 0
     y: -2304
@@ -2810,7 +2789,6 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
-  nearClipOverride: 0
   windowBounds:
     x: 1366
     y: -2304
