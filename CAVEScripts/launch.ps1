@@ -98,7 +98,8 @@ function Start-Instance([string]$virtualName, [int]$gpu = -1, [switch]$Batch, [s
         'overrideMachineName', $virtualName,
         'serverAddress',       $cfg.ServerAddress,
         'serverPort',          $cfg.ServerPort,
-        '-logFile',            $logFile
+        '-logFile',            $logFile,
+        '-gs-viewdata'
     )
     $monitor = -1
     $winW = 0

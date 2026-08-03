@@ -58,6 +58,23 @@ namespace UniCAVE
 
         private int frameCount = 0;
 
+        private uint poseSeq = 0;
+
+        /// <summary>
+        /// Sequence number of the head pose this node last applied, and the server time it was sent
+        /// with. Every node that applies the same broadcast reports the same pair, so a benchmark log
+        /// can verify that all nodes rendered the same pose sample in the same displayed frame.
+        /// </summary>
+        public static uint LastPoseSeq { get; private set; }
+
+        public static float LastPoseTime { get; private set; }
+
+        /// <summary>Head pose this node last applied. Logged per frame so navigation velocity is an
+        /// offline derivative rather than another runtime counter.</summary>
+        public static Vector3 LastHeadPos { get; private set; }
+
+        public static Vector3 LastRootPos { get; private set; }
+
         private bool CanSendRpc
         {
             get
@@ -91,13 +108,19 @@ namespace UniCAVE
                 // server. The updated transform is broadcast below, so all clients follow.
                 HandleManualNavigation();
 
+                poseSeq++;
+                LastPoseSeq = poseSeq;
+                LastPoseTime = Time.time;
+                LastHeadPos = head != null ? head.transform.position : Vector3.zero;
+                LastRootPos = transform.position;
+
                 if(head != null)
                 {
-                    SetTransformsClientRpc(transform.position, transform.rotation, head.transform.position, head.transform.rotation);
+                    SetTransformsClientRpc(transform.position, transform.rotation, head.transform.position, head.transform.rotation, poseSeq, Time.time);
                 }
                 else
                 {
-                    SetTransformsClientRpc(transform.position, transform.rotation, Vector3.zero, Quaternion.identity);
+                    SetTransformsClientRpc(transform.position, transform.rotation, Vector3.zero, Quaternion.identity, poseSeq, Time.time);
                 }
 
                 SetTimeClientRpc(Time.time);
@@ -183,8 +206,10 @@ namespace UniCAVE
         /// <param name="myOri">gobal CAVE orientation</param>
         /// <param name="headPos">global head position</param>
         /// <param name="headOri">global head orientation</param>
+        /// <param name="seq">monotonic id of this pose sample, for cross-node determinism logging</param>
+        /// <param name="sendTime">server Time.time when the sample was sent</param>
         [ClientRpc]
-        void SetTransformsClientRpc(Vector3 myPos, Quaternion myOri, Vector3 headPos, Quaternion headOri)
+        void SetTransformsClientRpc(Vector3 myPos, Quaternion myOri, Vector3 headPos, Quaternion headOri, uint seq, float sendTime)
         {
             transform.SetPositionAndRotation(myPos, myOri);
 
@@ -192,6 +217,11 @@ namespace UniCAVE
             {
                 head.transform.SetPositionAndRotation(headPos, headOri);
             }
+
+            LastPoseSeq = seq;
+            LastPoseTime = sendTime;
+            LastHeadPos = headPos;
+            LastRootPos = myPos;
         }
 
         /// <summary>
