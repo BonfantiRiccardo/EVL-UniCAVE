@@ -45,6 +45,11 @@ namespace UniCAVE
 
         public float nearClippingPlane = 0.01f, farClippingPlane = 100.0f;
 
+        [Tooltip("When on, the right eye renders from the left eye's position, collapsing every " +
+                 "display on this head to mono. Set by UCNetwork (F5), which broadcasts it to clients " +
+                 "so multi-instance rigs like ARCADE2 stay in sync; don't read local input here.")]
+        public bool mono = false;
+
         public enum Eyes { Left, Center, Right }
 
         public Vector3 GetEyeOffset(Eyes eye)

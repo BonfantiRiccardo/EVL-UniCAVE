@@ -650,7 +650,10 @@ namespace UniCAVE
 
             if(rightCam != null)
             {
-                Matrix4x4 rightMat = Util.getAsymProjMatrix(LowerLeft, LowerRight, UpperLeft, rightCam.transform.position, head.nearClippingPlane, head.farClippingPlane);
+                // Mono: project the right eye from the left eye's position so both halves of a
+                // side-by-side signal show the same view instead of destroying/rebuilding cameras.
+                Vector3 rightEyePos = (head.mono && leftCam != null) ? leftCam.transform.position : rightCam.transform.position;
+                Matrix4x4 rightMat = Util.getAsymProjMatrix(LowerLeft, LowerRight, UpperLeft, rightEyePos, head.nearClippingPlane, head.farClippingPlane);
                 rightCam.projectionMatrix = rightMat;
                 rightCam.transform.rotation = transform.rotation;
             }

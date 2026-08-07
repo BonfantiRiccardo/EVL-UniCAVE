@@ -108,6 +108,13 @@ namespace UniCAVE
                 // server. The updated transform is broadcast below, so all clients follow.
                 HandleManualNavigation();
 
+                // Stereo/mono toggle (F5), read on the server only, same reason as above.
+                if(head != null && Keyboard.current != null && Keyboard.current.f5Key.wasPressedThisFrame)
+                {
+                    head.mono = !head.mono;
+                    SetMonoClientRpc(head.mono);
+                }
+
                 poseSeq++;
                 LastPoseSeq = poseSeq;
                 LastPoseTime = Time.time;
@@ -281,6 +288,15 @@ namespace UniCAVE
             }
 
             Debug.Log($"Synced random seed to {seed}.");
+        }
+
+        /// <summary>
+        /// Mirror the head's stereo/mono flag on every client.
+        /// </summary>
+        [ClientRpc]
+        void SetMonoClientRpc(bool mono)
+        {
+            if(head != null) head.mono = mono;
         }
 
         /// <summary>
