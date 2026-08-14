@@ -80,6 +80,18 @@ namespace UniCAVE
                  "value for every scene in a session or the conditions are not comparable.")]
         public float pathScale = 1.0f;
 
+        [Tooltip("Per-preset starting heading in degrees, indexed by NavPath (0 = Custom, unused). " +
+                 "A path runs the same shape whichever way it faces, so pointing each one down a " +
+                 "clear bearing is what keeps it out of the scene's geometry, and it also gives each " +
+                 "path a different view of the scene. Derived from the model's own free space; see " +
+                 "local/CAVE_Benchmarks.md.")]
+        public float[] pathBearingDeg = new float[7];
+
+        [Tooltip("Per-preset multiplier on pathScale, indexed by NavPath. 0 or 1 leaves the path at " +
+                 "the scene's pathScale; below 1 shrinks just that path, for the few that cannot fit " +
+                 "any bearing at full size.")]
+        public float[] pathScaleMul = new float[7];
+
         [Header("Axis convention")]
         [Tooltip("If forward feels reversed for your rig, flip this. CAVENavigator drives forward as " +
                  "-transform.forward, so this defaults to true to match it.")]
@@ -143,9 +155,33 @@ namespace UniCAVE
         private float segmentDuration;   // its duration after the speed caps have been applied
         private float segmentFraction;   // fraction of the motion already applied, f(elapsed/duration)
 
+        // Pose the scene was authored at. Every run restarts from here, so a run cannot inherit
+        // wherever the previous one finished or whatever nudged the root in between.
+        private Vector3 homePosition;
+        private Quaternion homeRotation;
+        private bool homeCaptured;
+
         void Start()
         {
+            CaptureHome();
             if (runOnStart && IsServer) StartRun();
+        }
+
+        private void CaptureHome()
+        {
+            if (homeCaptured) return;
+            homePosition = transform.position;
+            homeRotation = transform.rotation;
+            homeCaptured = true;
+        }
+
+        /// <summary>Return the root to the pose the scene started at. Server-only, like the run itself.</summary>
+        public void ResetToHome()
+        {
+            if (!IsServer) return;
+            CaptureHome();
+            StopRun();
+            transform.SetPositionAndRotation(homePosition, homeRotation);
         }
 
         void Update()
@@ -360,6 +396,10 @@ namespace UniCAVE
         public void StartRun()
         {
             if (!IsServer) return;
+            CaptureHome();
+            // Every run starts from the same pose and the preset's own heading, so a path is
+            // reproducible no matter what happened before it.
+            transform.SetPositionAndRotation(homePosition, homeRotation * Quaternion.Euler(0f, Bearing(path), 0f));
             ApplyPath(path);
             if (segments == null || segments.Count == 0)
             {
@@ -402,10 +442,25 @@ namespace UniCAVE
         /// and rotation deltas: a smaller scene run at a lower speed would fire fewer sorts and look
         /// cheaper for a reason that is the path rather than the content.
         /// </summary>
+        private float Bearing(NavPath p)
+        {
+            int i = (int)p;
+            return (pathBearingDeg != null && i < pathBearingDeg.Length) ? pathBearingDeg[i] : 0f;
+        }
+
+        /// <summary>Scene scale times this preset's own multiplier. A multiplier of 0 means "unset".</summary>
+        private float EffectiveScale(NavPath p)
+        {
+            int i = (int)p;
+            float mul = (pathScaleMul != null && i < pathScaleMul.Length) ? pathScaleMul[i] : 0f;
+            if (mul <= 0f) mul = 1f;
+            return Mathf.Max(0.01f, pathScale) * mul;
+        }
+
         private NavSegment Seg(float fwd = 0f, float right = 0f, float up = 0f,
                                float turn = 0f, float sec = 1f, NavEase ease = NavEase.Constant)
         {
-            float k = Mathf.Max(0.01f, pathScale);
+            float k = EffectiveScale(path);
             bool translates = fwd != 0f || right != 0f || up != 0f;
             return new NavSegment
             {
@@ -451,7 +506,7 @@ namespace UniCAVE
                                    Vector3.Dot(-residual, rEnd) / rSign,
                                    -residual.y),
                 turnDegrees = 0f,
-                seconds = sec * Mathf.Max(0.01f, pathScale),
+                seconds = sec * EffectiveScale(path),
                 ease = ease,
             };
         }

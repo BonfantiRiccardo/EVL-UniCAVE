@@ -67,12 +67,12 @@ MonoBehaviour:
     width: 6720
     height: 1890
   leftViewport:
-    x: 0
+    x: 3360
     y: 0
     width: 3360
     height: 1890
   rightViewport:
-    x: 3360
+    x: 0
     y: 0
     width: 3360
     height: 1890
@@ -305,7 +305,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 527487488
+  GlobalObjectIdHash: 3259530521
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1

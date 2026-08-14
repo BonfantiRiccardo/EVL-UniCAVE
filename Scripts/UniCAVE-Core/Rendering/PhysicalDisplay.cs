@@ -650,10 +650,11 @@ namespace UniCAVE
 
             if(rightCam != null)
             {
-                // Mono: project the right eye from the left eye's position so both halves of a
-                // side-by-side signal show the same view instead of destroying/rebuilding cameras.
-                Vector3 rightEyePos = (head.mono && leftCam != null) ? leftCam.transform.position : rightCam.transform.position;
-                Matrix4x4 rightMat = Util.getAsymProjMatrix(LowerLeft, LowerRight, UpperLeft, rightEyePos, head.nearClippingPlane, head.farClippingPlane);
+                // Mono moves the eye itself: getAsymProjMatrix only sets the frustum, so skewing it
+                // without moving the camera leaves the view matrix at the right eye and the halves
+                // still differ by d*IPD/depth.
+                rightCam.transform.localPosition = head.GetEyeOffset(head.mono ? HeadConfiguration.Eyes.Left : HeadConfiguration.Eyes.Right);
+                Matrix4x4 rightMat = Util.getAsymProjMatrix(LowerLeft, LowerRight, UpperLeft, rightCam.transform.position, head.nearClippingPlane, head.farClippingPlane);
                 rightCam.projectionMatrix = rightMat;
                 rightCam.transform.rotation = transform.rotation;
             }

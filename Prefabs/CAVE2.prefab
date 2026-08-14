@@ -1769,6 +1769,7 @@ MonoBehaviour:
   rightEyeOffset: {x: 0.03125, y: 0, z: 0}
   nearClippingPlane: 0.01
   farClippingPlane: 150
+  mono: 0
 --- !u!114 &8433287565319102888
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2225,7 +2226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 2996056936
+  GlobalObjectIdHash: 999871060
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2349,13 +2350,27 @@ MonoBehaviour:
   maxMoveSpeed: 5
   maxTurnSpeed: 45
   pathScale: 1
+  pathBearingDeg:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  pathScaleMul:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
   invertForward: 0
   invertRight: 0
   allowKeyboardTrigger: 0
   runOnStart: 0
   path: 0
-  chunkOscillationMeters: 8
-  chunkOscillationCycles: 4
   replayMode: 0
   replayDeltaTime: 0.016666668
 --- !u!114 &4190087043327839483
