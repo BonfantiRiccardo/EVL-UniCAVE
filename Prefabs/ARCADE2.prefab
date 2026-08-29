@@ -268,6 +268,8 @@ GameObject:
   - component: {fileID: 6511018626492863562}
   - component: {fileID: 7260047838322667408}
   - component: {fileID: 2524540078856538812}
+  - component: {fileID: 3553445376671367753}
+  - component: {fileID: 5433479464422604798}
   m_Layer: 0
   m_Name: ARCADE2
   m_TagString: Untagged
@@ -393,3 +395,58 @@ MonoBehaviour:
   rotateSpeed: 30
   verticalSpeed: 1.5
   stickDeadZone: 0.15
+--- !u!114 &5433479464422604798
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8849329776365031225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61f55b8397232be48aff5298c31f7c02, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.AutoNavigator
+  ShowTopMostFoldoutHeaderGroup: 1
+  segments: []
+  maxMoveSpeed: 5
+  maxTurnSpeed: 45
+  pathScale: 1
+  pathBearingDeg:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  pathScaleMul:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  invertForward: 0
+  invertRight: 0
+  allowKeyboardTrigger: 0
+  runOnStart: 0
+  path: 0
+  replayMode: 0
+  replayDeltaTime: 0.033333335
+--- !u!114 &3553445376671367753
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8849329776365031225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1eb6c506b05d4a43a017bc1e289ab99, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GaussianSplatting.GSBenchmarkController
+  ShowTopMostFoldoutHeaderGroup: 1
+  autoNavigator: {fileID: 5433479464422604798}
+  logToggles: 1

@@ -2226,7 +2226,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 999871060
+  GlobalObjectIdHash: 537779916
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2333,6 +2333,7 @@ MonoBehaviour:
   ShowTopMostFoldoutHeaderGroup: 1
   autoNavigator: {fileID: 5433479464422604797}
   logToggles: 1
+  replayAckTimeout: 5
 --- !u!114 &5433479464422604797
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2372,7 +2373,7 @@ MonoBehaviour:
   runOnStart: 0
   path: 0
   replayMode: 0
-  replayDeltaTime: 0.016666668
+  replayDeltaTime: 0.033333335
 --- !u!114 &4190087043327839483
 MonoBehaviour:
   m_ObjectHideFlags: 0

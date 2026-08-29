@@ -16,7 +16,12 @@
     Unity built-in args:  dash prefix.
 #>
 [CmdletBinding()]
-param()
+param(
+    # Session D only. Turns on replay mode and per-frame temporal capture. Leave it off for
+    # sessions A, B2 and E: replay makes the path advance per rendered frame instead of by the
+    # clock, so any frame time measured with it on is meaningless.
+    [switch]$Temporal
+)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
@@ -143,11 +148,15 @@ function Start-ArcadeInstance($inst) {
         'serverPort',          $serverPort,
         '-logFile',            $logFile,
         '-force-device-index', $inst.gpu,
+        '-gs-capture-nodes',   'all',
+        '-gs-viewdata',
         '-monitor',            $screen.monitor,
         '-popupwindow',
         '-screen-width',       $screen.w,
         '-screen-height',      $screen.h
     )
+    if ($Temporal) { $argList += @('-gs-temporal', '-gs-replay') }
+
     $p = Start-Process -FilePath $exe -ArgumentList $argList -PassThru
     Write-Host "[ARCADE] $($inst.name) pid=$($p.Id) gpu=$($inst.gpu) monitor=$($screen.monitor) size=$($screen.w)x$($screen.h) log=$logFile"
     return $p

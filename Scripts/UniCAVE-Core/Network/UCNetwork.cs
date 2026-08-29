@@ -59,6 +59,7 @@ namespace UniCAVE
         private int frameCount = 0;
 
         private uint poseSeq = 0;
+        private int lastSentReplayStep = -1;
 
         /// <summary>
         /// Sequence number of the head pose this node last applied, and the server time it was sent
@@ -115,6 +116,11 @@ namespace UniCAVE
                     SetMonoClientRpc(head.mono);
                 }
 
+                // A gated replay moves the root only when the capture nodes are ready. Re-sending an
+                // unchanged pose at the head's frame rate buries a node rendering a few frames a second.
+                if(AutoNavigator.ReplayActive && AutoNavigator.LastReplayStep == lastSentReplayStep) return;
+                lastSentReplayStep = AutoNavigator.LastReplayStep;
+
                 poseSeq++;
                 LastPoseSeq = poseSeq;
                 LastPoseTime = Time.time;
@@ -123,11 +129,11 @@ namespace UniCAVE
 
                 if(head != null)
                 {
-                    SetTransformsClientRpc(transform.position, transform.rotation, head.transform.position, head.transform.rotation, poseSeq, Time.time);
+                    SetTransformsClientRpc(transform.position, transform.rotation, head.transform.position, head.transform.rotation, poseSeq, Time.time, AutoNavigator.LastReplayStep);
                 }
                 else
                 {
-                    SetTransformsClientRpc(transform.position, transform.rotation, Vector3.zero, Quaternion.identity, poseSeq, Time.time);
+                    SetTransformsClientRpc(transform.position, transform.rotation, Vector3.zero, Quaternion.identity, poseSeq, Time.time, AutoNavigator.LastReplayStep);
                 }
 
                 SetTimeClientRpc(Time.time);
@@ -215,8 +221,9 @@ namespace UniCAVE
         /// <param name="headOri">global head orientation</param>
         /// <param name="seq">monotonic id of this pose sample, for cross-node determinism logging</param>
         /// <param name="sendTime">server Time.time when the sample was sent</param>
+        /// <param name="replayStep">replay step id this pose belongs to; 0 outside a replay run</param>
         [ClientRpc]
-        void SetTransformsClientRpc(Vector3 myPos, Quaternion myOri, Vector3 headPos, Quaternion headOri, uint seq, float sendTime)
+        void SetTransformsClientRpc(Vector3 myPos, Quaternion myOri, Vector3 headPos, Quaternion headOri, uint seq, float sendTime, int replayStep)
         {
             transform.SetPositionAndRotation(myPos, myOri);
 
@@ -229,6 +236,8 @@ namespace UniCAVE
             LastPoseTime = sendTime;
             LastHeadPos = headPos;
             LastRootPos = myPos;
+            // Same message as the pose, so the two can never be read out of step on a capture node.
+            AutoNavigator.LastReplayStep = replayStep;
         }
 
         /// <summary>

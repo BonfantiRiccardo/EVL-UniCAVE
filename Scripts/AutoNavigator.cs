@@ -147,6 +147,29 @@ namespace UniCAVE
         public int Phase { get; private set; } = -1;
         public bool IsRunning { get; private set; }
 
+        /// <summary>Replay steps applied so far in this run. Only meaningful while replayMode is on.</summary>
+        public int ReplayStep { get; private set; }
+
+        /// <summary>
+        /// Step id of the pose the CAVE root currently holds. Written here on the server and by
+        /// <see cref="UCNetwork"/> on every client from the same message that carries the pose, so a
+        /// capture node can tell which step it is looking at and never captures one step twice.
+        /// </summary>
+        public static int LastReplayStep;
+
+        /// <summary>True while a replay run is in flight on the server, so the pose broadcast can skip
+        /// the frames where the barrier is holding the path still.</summary>
+        public static bool ReplayActive;
+
+        /// <summary>
+        /// Pace control for replay runs. Fixed-step replay only reproduces a real run when the process
+        /// advancing the path is the one stalling for the capture, which on a cluster it is not: this
+        /// runs on the head and the captures happen on the display nodes. The benchmark glue installs a
+        /// gate here that stays false until every capturing node has written the frame for the step
+        /// being asked about. Null means advance freely.
+        /// </summary>
+        public static Func<int, bool> ReplayGate;
+
         // Execution cursor for the active segment. Progress is tracked in TIME, and the shape function
         // converts elapsed time into the fraction of the motion completed, so translation and yaw stay
         // locked to one profile and the authored duration is exact.
@@ -163,8 +186,34 @@ namespace UniCAVE
 
         void Start()
         {
+            ApplyReplayOverride();
             CaptureHome();
             if (runOnStart && IsServer) StartRun();
+        }
+
+        /// <summary>
+        /// -gs-replay turns replay mode on at launch, so session D needs no separate build. The
+        /// serialized value stays the default, which means a build is safe for timing unless the flag
+        /// is passed. Replay makes the path advance a fixed step per rendered frame instead of by the
+        /// clock, so it is announced loudly: a timing run started with it on produces frame times that
+        /// look ordinary and mean nothing.
+        /// </summary>
+        private void ApplyReplayOverride()
+        {
+            bool flag = false;
+            try
+            {
+                foreach (string a in System.Environment.GetCommandLineArgs())
+                    if (string.Equals(a, "-gs-replay", System.StringComparison.OrdinalIgnoreCase))
+                    { flag = true; break; }
+            }
+            catch { }
+
+            if (flag) replayMode = true;
+            if (replayMode)
+                Debug.LogWarning("[AutoNavigator] REPLAY MODE IS ON. The path advances a fixed step " +
+                                 "per rendered frame, so frame times from this run are meaningless. " +
+                                 "Use it for session D only.");
         }
 
         private void CaptureHome()
@@ -199,6 +248,13 @@ namespace UniCAVE
             // Use unscaled delta time so the run is independent of any Time.timeScale changes.
             float dt = replayMode ? Mathf.Max(1e-6f, replayDeltaTime) : Time.unscaledDeltaTime;
             if (dt <= 0f) return;
+
+            if (replayMode)
+            {
+                if (ReplayGate != null && !ReplayGate(ReplayStep)) return;
+                ReplayStep++;
+                LastReplayStep = ReplayStep;
+            }
 
             if (segmentIndex < 0 || segmentIndex >= segments.Count)
             {
@@ -407,6 +463,9 @@ namespace UniCAVE
                 return;
             }
             RunId++;
+            ReplayStep = 0;
+            LastReplayStep = 0;
+            ReplayActive = replayMode;
             IsRunning = true;
             segmentIndex = -1;
             AdvanceSegment();
@@ -414,6 +473,7 @@ namespace UniCAVE
 
         public void StopRun()
         {
+            ReplayActive = false;
             IsRunning = false;
             Phase = -1;
             segmentIndex = -1;
