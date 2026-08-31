@@ -68,7 +68,7 @@ git clone https://github.com/BonfantiRiccardo/MyUniCAVE.git
 
 Pre-versioned snapshot, read-only inside the consumer project.
 
-1. Download `Package~/MyUniCAVE-X.Y.Z.unitypackage` from this repository.
+1. Download `Package~/MyUniCAVE.unitypackage` from this repository.
 2. In the consumer Unity Editor: **Assets > Import Package > Custom
    Package...**, pick the file, leave every entry checked, click
    **Import**. Files land at `Assets/MyUniCAVE/` with paths and GUIDs
@@ -198,8 +198,11 @@ Continue from part 1 with `Prefabs/CAVE2.prefab`.
    builds will ship without the row interleave pass.
 
 4. **Verify the head tracking source** in `VRPNTrack` (a child of the
-   `Head` node): `trackerAddress = <Vicon-body-name>@<tracking-server-ip>`
-   (e.g. `Head_Tracker@10.0.0.207`).
+   `Head` node): `trackerAddress = <Vicon-body-name>@<tracking-server-ip>`.
+   The shipped CAVE2 prefab uses `Head_Tracker@TRACKER_HOST`. Pose and
+   controller input come from two different servers on that host: Vicon
+   publishes pose on the default port, and the Omicron server publishes
+   buttons and analog as a single `Navigation` device on port 3894.
 
 5. **Add scene content** as siblings of `Head` and the displays or at
    hierarchy root, inside the CAVE2 prefab. Anything inside the prefab
