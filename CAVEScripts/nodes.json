@@ -42,7 +42,8 @@
       { "name": "ORION-GPU3", "gpu": 3 }
     ]
   },
-  "ExeName": "UniCAVE-GS.exe",
+  "ExeName": "",
+  "TrackerHost": "",
   "ServerAddress": "10.0.0.175",
   "ServerPort": 7777
 }

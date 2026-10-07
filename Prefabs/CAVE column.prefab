@@ -147,10 +147,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.HeadConfiguration
   camPrefab: {fileID: 5215705229011010987, guid: b4f4893f7df2a6747936f74bddd714d8, type: 3}
-  leftEyeOffset: {x: -0.032, y: 0, z: 0}
-  rightEyeOffset: {x: 0.032, y: 0, z: 0}
+  leftEyeOffset: {x: -0.03125, y: 0, z: 0}
+  rightEyeOffset: {x: 0.03125, y: 0, z: 0}
   nearClippingPlane: 0.01
   farClippingPlane: 1000
+  mono: 0
 --- !u!1 &7525522461670670317
 GameObject:
   m_ObjectHideFlags: 0
@@ -201,7 +202,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 2696412504
+  GlobalObjectIdHash: 527637776
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1

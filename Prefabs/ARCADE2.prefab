@@ -67,12 +67,12 @@ MonoBehaviour:
     width: 6720
     height: 1890
   leftViewport:
-    x: 3360
+    x: 0
     y: 0
     width: 3360
     height: 1890
   rightViewport:
-    x: 0
+    x: 3360
     y: 0
     width: 3360
     height: 1890
@@ -249,8 +249,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.HeadConfiguration
   camPrefab: {fileID: 5215705229011010987, guid: b4f4893f7df2a6747936f74bddd714d8, type: 3}
-  leftEyeOffset: {x: -0.032, y: 0, z: 0}
-  rightEyeOffset: {x: 0.032, y: 0, z: 0}
+  leftEyeOffset: {x: -0.03125, y: 0, z: 0}
+  rightEyeOffset: {x: 0.03125, y: 0, z: 0}
   nearClippingPlane: 0.01
   farClippingPlane: 1000
   mono: 0
@@ -268,7 +268,6 @@ GameObject:
   - component: {fileID: 6511018626492863562}
   - component: {fileID: 7260047838322667408}
   - component: {fileID: 2524540078856538812}
-  - component: {fileID: 3553445376671367753}
   - component: {fileID: 5433479464422604798}
   m_Layer: 0
   m_Name: ARCADE2
@@ -307,7 +306,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3259530521
+  GlobalObjectIdHash: 2610403256
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -428,25 +427,10 @@ MonoBehaviour:
   - 0
   - 0
   - 0
-  invertForward: 0
-  invertRight: 0
+  invertForward: 1
+  invertRight: 1
   allowKeyboardTrigger: 0
   runOnStart: 0
   path: 0
   replayMode: 0
   replayDeltaTime: 0.033333335
---- !u!114 &3553445376671367753
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8849329776365031225}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1eb6c506b05d4a43a017bc1e289ab99, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GaussianSplatting.GSBenchmarkController
-  ShowTopMostFoldoutHeaderGroup: 1
-  autoNavigator: {fileID: 5433479464422604798}
-  logToggles: 1

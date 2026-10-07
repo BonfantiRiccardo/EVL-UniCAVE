@@ -34,10 +34,9 @@ namespace UniCAVE
         [Tooltip("This object will be transformed by this script")]
         public HeadConfiguration head;
 
-        [Header("Manual Navigation (KEYBOARD-ONLY desktop fallback)")]
-        [Tooltip("If enabled, the head machine drives the CAVE root with WASD/Q-E/arrow keys for desktop testing. " +
-                 "The GAMEPAD is intentionally NOT read here - GamepadLocomotion owns it, so the two never fight over the root. " +
-                 "Movement is broadcast to all clients automatically.")]
+        [Header("Manual navigation (keyboard)")]
+        [Tooltip("Lets the head machine move the CAVE root with WASD, Q/E and the arrow keys, for desktop " +
+                 "testing. The gamepad is left to GamepadLocomotion.")]
         public bool enableManualNavigation = true;
 
         [Tooltip("Translation speed in meters/second")]
@@ -46,7 +45,7 @@ namespace UniCAVE
         [Tooltip("Rotation speed in degrees/second")]
         public float navRotateSpeed = 15.0f;
 
-        [Tooltip("Hold Shift (keyboard) or a shoulder button (gamepad) to multiply movement speed by this factor")]
+        [Tooltip("Speed multiplier while Shift is held")]
         public float navSprintMultiplier = 2.0f;
 
         [Tooltip("Ignore gamepad stick input below this magnitude (0-1)")]
@@ -62,19 +61,30 @@ namespace UniCAVE
         private int lastSentReplayStep = -1;
 
         /// <summary>
-        /// Sequence number of the head pose this node last applied, and the server time it was sent
-        /// with. Every node that applies the same broadcast reports the same pair, so a benchmark log
-        /// can verify that all nodes rendered the same pose sample in the same displayed frame.
+        /// Sequence number and server send time of the last pose this node applied. Nodes that applied
+        /// the same broadcast report the same pair, so per-node logs can be matched frame by frame.
         /// </summary>
         public static uint LastPoseSeq { get; private set; }
 
         public static float LastPoseTime { get; private set; }
 
-        /// <summary>Head pose this node last applied. Logged per frame so navigation velocity is an
-        /// offline derivative rather than another runtime counter.</summary>
+        /// <summary>Head position this node last applied.</summary>
         public static Vector3 LastHeadPos { get; private set; }
 
         public static Vector3 LastRootPos { get; private set; }
+
+        /// <summary>True on a display node while the head has hidden the overlays (F1). Set on the head only if it has a local display.</summary>
+        public static bool DisplayOverlaysHidden { get; private set; }
+
+        /// <summary>True when this instance drives at least one display (ARCADE head, Editor), false on a display-less head (CAVE2MASTER).</summary>
+        public static bool HasLocalDisplay { get; private set; }
+
+        private bool overlaysHiddenOnDisplays;
+
+        void Awake()
+        {
+            HasLocalDisplay = GetAllDisplays().Exists(d => d.ShouldBeActive());
+        }
 
         private bool CanSendRpc
         {
@@ -105,19 +115,25 @@ namespace UniCAVE
                     return;
                 }
 
-                // Fallback navigation: drive the CAVE root from the keyboard on the
-                // server. The updated transform is broadcast below, so all clients follow.
+                // The new root pose is broadcast below, so the clients follow.
                 HandleManualNavigation();
 
-                // Stereo/mono toggle (F5), read on the server only, same reason as above.
+                // F5 toggles stereo/mono on every node.
                 if(head != null && Keyboard.current != null && Keyboard.current.f5Key.wasPressedThisFrame)
                 {
                     head.mono = !head.mono;
                     SetMonoClientRpc(head.mono);
                 }
 
-                // A gated replay moves the root only when the capture nodes are ready. Re-sending an
-                // unchanged pose at the head's frame rate buries a node rendering a few frames a second.
+                // F1 hides on-screen overlays on every node with a display; a display-less head keeps its own.
+                if(Keyboard.current != null && Keyboard.current.f1Key.wasPressedThisFrame)
+                {
+                    overlaysHiddenOnDisplays = !overlaysHiddenOnDisplays;
+                    if(HasLocalDisplay) DisplayOverlaysHidden = overlaysHiddenOnDisplays;
+                    SetOverlaysHiddenClientRpc(overlaysHiddenOnDisplays);
+                }
+
+                // While a replay gate holds the path the pose does not change, so it is not resent.
                 if(AutoNavigator.ReplayActive && AutoNavigator.LastReplayStep == lastSentReplayStep) return;
                 lastSentReplayStep = AutoNavigator.LastReplayStep;
 
@@ -149,10 +165,8 @@ namespace UniCAVE
         }
 
         /// <summary>
-        /// Server-only keyboard navigation, used when live tracking is unavailable.
-        /// WASD translates and Q/E raise/lower the CAVE root; the arrow keys rotate it.
-        /// Because this runs on the server and mutates "transform", the movement is
-        /// replicated to every client by <see cref="SetTransformsClientRpc"/> each frame.
+        /// Server-only keyboard navigation: WASD moves, Q/E lowers and raises, the arrow keys rotate.
+        /// <see cref="SetTransformsClientRpc"/> replicates the result.
         /// </summary>
         void HandleManualNavigation()
         {
@@ -160,13 +174,11 @@ namespace UniCAVE
 
             float dt = Time.deltaTime;
 
-            // Accumulated intent from all devices this frame.
             Vector2 moveInput = Vector2.zero;   // x = strafe (right +), y = forward (+)
             Vector2 lookInput = Vector2.zero;   // x = yaw (right +), y = pitch (nose up +)
             float verticalInput = 0f;           // up +, down -
             bool sprint = false;
 
-            // --- Keyboard: WASD move, Q/E up-down, arrow keys rotate ---
             Keyboard kb = Keyboard.current;
             if(kb != null)
             {
@@ -186,25 +198,19 @@ namespace UniCAVE
                 if(kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed) sprint = true;
             }
 
-            // NOTE: the gamepad is deliberately NOT read here. GamepadLocomotion owns
-            // Gamepad.current so two scripts never move the root from the same stick.
-            // This manual nav is keyboard-only (desktop testing fallback).
-
             moveInput = Vector2.ClampMagnitude(moveInput, 1f);
             lookInput = Vector2.ClampMagnitude(lookInput, 1f);
             verticalInput = Mathf.Clamp(verticalInput, -1f, 1f);
 
             float speed = navMoveSpeed * (sprint ? navSprintMultiplier : 1f);
 
-            // Rotation: yaw about world up, pitch about local right. A positive lookInput.y
-            // ("nose up") is a negative rotation about the local right axis in Unity.
+            // Nose-up input is a negative rotation about the local right axis.
             if(Mathf.Abs(lookInput.x) > 0.001f)
                 transform.Rotate(Vector3.up, lookInput.x * navRotateSpeed * dt, Space.World);
             if(Mathf.Abs(lookInput.y) > 0.001f)
                 transform.Rotate(Vector3.right, -lookInput.y * navRotateSpeed * dt, Space.Self);
 
-            // Translation. If a direction feels reversed for your rig, flip the sign on
-            // that axis -- it depends on how the CAVE root is oriented.
+            // Flip a sign here if an axis is reversed on your rig.
             Vector3 move = (transform.forward * moveInput.y)
                          + (transform.right * moveInput.x)
                          + (Vector3.up * verticalInput);
@@ -219,7 +225,7 @@ namespace UniCAVE
         /// <param name="myOri">gobal CAVE orientation</param>
         /// <param name="headPos">global head position</param>
         /// <param name="headOri">global head orientation</param>
-        /// <param name="seq">monotonic id of this pose sample, for cross-node determinism logging</param>
+        /// <param name="seq">monotonic id of this pose sample</param>
         /// <param name="sendTime">server Time.time when the sample was sent</param>
         /// <param name="replayStep">replay step id this pose belongs to; 0 outside a replay run</param>
         [ClientRpc]
@@ -236,7 +242,7 @@ namespace UniCAVE
             LastPoseTime = sendTime;
             LastHeadPos = headPos;
             LastRootPos = myPos;
-            // Same message as the pose, so the two can never be read out of step on a capture node.
+            // Same message as the pose, so the step and the pose always match.
             AutoNavigator.LastReplayStep = replayStep;
         }
 
@@ -306,6 +312,16 @@ namespace UniCAVE
         void SetMonoClientRpc(bool mono)
         {
             if(head != null) head.mono = mono;
+        }
+
+        /// <summary>
+        /// Hide or show the overlays on the display nodes. A host also runs ClientRpcs, so it skips itself.
+        /// </summary>
+        [ClientRpc]
+        void SetOverlaysHiddenClientRpc(bool hidden)
+        {
+            if(IsServer) return;
+            DisplayOverlaysHidden = hidden;
         }
 
         /// <summary>
@@ -468,7 +484,7 @@ namespace UniCAVE
             void OnEnable()
             {
                 //this is used for rendering, don't remove
-                // Use a URP-compatible shader; fall back gracefully if not found
+                // URP-compatible shader, with a fallback
                 Shader shader = Shader.Find("Hidden/Internal-Colored");
                 if(shader == null) shader = Shader.Find("Sprites/Default");
                 if(shader != null) material = new Material(shader);
@@ -510,13 +526,13 @@ namespace UniCAVE
                 cave.head = (HeadConfiguration)EditorGUILayout.ObjectField("Head", cave.head, typeof(HeadConfiguration), true);
 
                 EditorGUILayout.Space();
-                EditorGUILayout.LabelField("Manual Navigation (keyboard / gamepad fallback)", EditorStyles.boldLabel);
-                cave.enableManualNavigation = EditorGUILayout.Toggle(new GUIContent("Enable Manual Navigation", "Drive the CAVE root with WASD/Q-E/arrow keys and a gamepad on the head machine. Turn off when live tracking is working."), cave.enableManualNavigation);
+                EditorGUILayout.LabelField("Manual Navigation (keyboard)", EditorStyles.boldLabel);
+                cave.enableManualNavigation = EditorGUILayout.Toggle(new GUIContent("Enable Manual Navigation", "Move the CAVE root with WASD, Q/E and the arrow keys on the head machine."), cave.enableManualNavigation);
                 using(new EditorGUI.DisabledScope(!cave.enableManualNavigation))
                 {
                     cave.navMoveSpeed = EditorGUILayout.FloatField(new GUIContent("Move Speed", "Translation speed in meters/second"), cave.navMoveSpeed);
                     cave.navRotateSpeed = EditorGUILayout.FloatField(new GUIContent("Rotate Speed", "Rotation speed in degrees/second"), cave.navRotateSpeed);
-                    cave.navSprintMultiplier = EditorGUILayout.FloatField(new GUIContent("Sprint Multiplier", "Shift key / shoulder button speed multiplier"), cave.navSprintMultiplier);
+                    cave.navSprintMultiplier = EditorGUILayout.FloatField(new GUIContent("Sprint Multiplier", "Speed multiplier while Shift is held"), cave.navSprintMultiplier);
                     cave.gamepadDeadZone = EditorGUILayout.Slider(new GUIContent("Gamepad Dead Zone", "Ignore gamepad stick input below this magnitude"), cave.gamepadDeadZone, 0f, 0.9f);
                 }
                 EditorGUILayout.Space();

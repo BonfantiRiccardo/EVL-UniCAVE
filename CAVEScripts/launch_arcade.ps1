@@ -9,18 +9,20 @@
     receives the pose, and renders its screen. Only the head reads input; the
     client mirrors it. No VRPN, no per-instance input.
 
-    Script auto-detects its build folder from $PSScriptRoot, so it finds the exe
-    next to itself regardless of deploy path (bundled by CopyLaunchScripts.cs).
+    The script finds the exe next to itself, so it works from any deploy path
+    (CopyLaunchScripts.cs copies it into every build). If $exeName is empty,
+    the only player exe in the folder is used.
 
     UniCAVE custom args: no dash prefix (Util.GetArg parses raw tokens).
     Unity built-in args:  dash prefix.
+
+.PARAMETER ExtraArgs
+    Extra command-line arguments for both instances, as one string,
+    for example -ExtraArgs "-logStats -myFlag 3".
 #>
 [CmdletBinding()]
 param(
-    # Session D only. Turns on replay mode and per-frame temporal capture. Leave it off for
-    # sessions A, B2 and E: replay makes the path advance per rendered frame instead of by the
-    # clock, so any frame time measured with it on is meaningless.
-    [switch]$Temporal
+    [string]$ExtraArgs = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,7 +49,7 @@ Add-Type -AssemblyName System.Windows.Forms
 # ---------------------------------------------------------------------------
 $serverAddress = '127.0.0.1'
 $serverPort    = 6543
-$exeName       = 'UniCAVE-GS.exe'
+$exeName       = ''   # empty: the only player exe next to this script
 $staggerMs     = 2000
 
 $instances = @(
@@ -118,8 +120,16 @@ Add-Type -Namespace Arcade -Name Fg -Language CSharp -MemberDefinition @'
 
 # ---------------------------------------------------------------------------
 $scriptDir = Split-Path -Parent $PSCommandPath
-$exe    = Join-Path $scriptDir $exeName
+if ($exeName) {
+    $exe = Join-Path $scriptDir $exeName
+} else {
+    $found = @(Get-ChildItem -Path $scriptDir -Filter '*.exe' -File |
+        Where-Object { $_.Name -notlike 'UnityCrashHandler*' })
+    if ($found.Count -ne 1) { throw "expected one player exe in $scriptDir, found $($found.Count); set `$exeName" }
+    $exe = $found[0].FullName
+}
 $logDir = Join-Path $scriptDir 'Logs'
+$extra  = @($ExtraArgs -split '\s+' | Where-Object { $_ })
 
 if (-not (Test-Path $exe))    { throw "exe not found: $exe - build/sync first." }
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
@@ -148,14 +158,12 @@ function Start-ArcadeInstance($inst) {
         'serverPort',          $serverPort,
         '-logFile',            $logFile,
         '-force-device-index', $inst.gpu,
-        '-gs-capture-nodes',   'all',
-        '-gs-viewdata',
         '-monitor',            $screen.monitor,
         '-popupwindow',
         '-screen-width',       $screen.w,
         '-screen-height',      $screen.h
     )
-    if ($Temporal) { $argList += @('-gs-temporal', '-gs-replay') }
+    $argList += $extra
 
     $p = Start-Process -FilePath $exe -ArgumentList $argList -PassThru
     Write-Host "[ARCADE] $($inst.name) pid=$($p.Id) gpu=$($inst.gpu) monitor=$($screen.monitor) size=$($screen.w)x$($screen.h) log=$logFile"

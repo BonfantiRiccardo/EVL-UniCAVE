@@ -1,7 +1,3 @@
-// Simple keyboard + gamepad navigation for testing UniCAVE scenes.
-// Attach to the UniCAVE root object (same object that has UCNetwork).
-// Movement is applied to the UniCAVE root transform, which UCNetwork
-// automatically replicates to all clients via SetTransformsClientRpc.
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Unity.Netcode;
@@ -9,9 +5,8 @@ using Unity.Netcode;
 namespace UniCAVE
 {
     /// <summary>
-    /// Keyboard and gamepad navigation for the UniCAVE root.
-    /// Only runs on the server (head machine) or in the editor.
-    /// Moves the entire CAVE rig so the viewer can walk through the scene.
+    /// Keyboard and gamepad navigation for the UniCAVE root, on the server only.
+    /// UCNetwork replicates the root to the clients.
     /// </summary>
     public class CAVENavigator : NetworkBehaviour
     {
@@ -36,13 +31,11 @@ namespace UniCAVE
 
         void Update()
         {
-            // Only the server (head machine) drives navigation.
-            // In editor we always act as server, so this works for testing.
+            // The editor runs as the server, so this also works for desk testing.
             if(!IsServer) return;
 
             float dt = Time.deltaTime;
 
-            // --- Gather input ---
             Vector2 moveInput = Vector2.zero;
             Vector2 lookInput = Vector2.zero;
             float verticalInput = 0f;
@@ -72,7 +65,7 @@ namespace UniCAVE
                 sprint = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
             }
 
-            // Gamepad (additive, so both keyboard and gamepad work simultaneously)
+            // Gamepad input adds to the keyboard, so both work at once.
             var gp = Gamepad.current;
             if(gp != null)
             {
@@ -106,16 +99,13 @@ namespace UniCAVE
 
             float speedMul = sprint ? sprintMultiplier : 1f;
 
-            // --- Apply rotation (yaw around world Y, pitch around local right) ---
+            // Yaw around world up, pitch around local right.
             if(lookInput.sqrMagnitude > 0.001f)
             {
-                // Yaw
                 transform.Rotate(Vector3.up, lookInput.x * rotateSpeed * dt, Space.World);
-                // Pitch (around local right axis)
                 transform.Rotate(Vector3.right, lookInput.y * rotateSpeed * dt, Space.Self);
             }
 
-            // --- Apply translation ---
             Vector3 planarMove = (-transform.forward * moveInput.y) + (-transform.right * moveInput.x);
             Vector3 verticalMove = Vector3.up * (verticalInput * verticalSpeed);
 

@@ -4,64 +4,30 @@ using Unity.Netcode;
 namespace UniCAVE
 {
     /// <summary>
-    /// Wand-driven locomotion for the UniCAVE root: the third navigation option
-    /// alongside CAVENavigator (keyboard) and GamepadLocomotion (Unity gamepad).
-    /// Attach to the UniCAVE root GameObject (same GameObject as UCNetwork).
-    ///
-    /// Reads the CAVE2 wand's analog stick, arrow pad and buttons over VRPN and
-    /// translates/rotates the CAVE root along the *wand's* forward/right axes
-    /// (projected horizontally by default). Push the stick forward to move
-    /// whichever direction the wand is pointing, push left/right to strafe.
-    /// Yaw pivots around <see cref="turnPivot"/> (set it to the Head) so the user
-    /// turns in place rather than orbiting the root origin.
-    ///
-    /// Head tracking via VRPNTrack on the Head child still gives the correct
-    /// off-axis projection for each display independently of where the CAVE root
-    /// is or which way the wand is pointing.
-    ///
-    /// Server-only; the resulting CAVE-root transform is replicated to clients
-    /// by UCNetwork.SetTransformsClientRpc every frame.
-    ///
-    /// IMPORTANT - two different VRPN devices:
-    ///   pose  (wand orientation) = Vicon,   e.g. Wand_Batman@TRACKER_HOST
-    ///   input (stick / buttons)  = Omicron VRPNDevice, a separate address.
-    /// Vicon's VRPN output is pose-only, so pointing analogDevice at Wand_Batman
-    /// silently yields zeros. See local/VRPN_Tracking_Input_Setup.md.
-    ///
-    /// IMPORTANT - channel numbering: trackd prints val01../but01.. (1-based) but
-    /// VRPN channels are 0-based, so trackd val01 is channel 0, but02 is button 1.
-    /// The defaults below already encode the CAVE2 wand mapping:
-    ///   val01 -> ch 0  stick X (left -1 / right +1)
-    ///   val02 -> ch 1  stick Y (back -1 / forward +1)
-    ///   val05 -> ch 4  arrows X (left -1 / right +1)
-    ///   val06 -> ch 5  arrows Y (back -1 / forward +1)
-    ///   but02 -> button 1  (X)
-    ///   but03 -> button 2  (O)
-    /// Enable <see cref="debugLogChannels"/> to confirm this on the live rig
-    /// before trusting it.
+    /// Moves the CAVE root with the CAVE2 wand: the stick moves along the wand's facing, the arrow pad
+    /// turns or flies, and two buttons sprint and reset. Stick and buttons are read from the Omicron
+    /// VRPN device; the wand pose comes from its VRPNTrack. Server-only; UCNetwork replicates the root.
     /// </summary>
     public class WandLocomotion : NetworkBehaviour
     {
-        /// <summary>What an arrow-pad axis drives. Lets the mapping be retuned in the
-        /// Inspector instead of requiring a rebuild + redeploy across the cluster.</summary>
+        /// <summary>What an arrow-pad axis drives.</summary>
         public enum ArrowAction { None, Yaw, Vertical, Move }
 
         [Header("Wand Reference")]
-        [Tooltip("The tracked Wand GameObject (a child of this UniCAVE root, with a VRPNTrack component). " +
-                 "Its transform.forward / transform.right are used as the movement basis.")]
+        [Tooltip("Transform whose forward and right define movement: the tracked Wand to move where you " +
+                 "point, or the Head to move where you look.")]
         public Transform wand;
 
-        [Tooltip("What yaw pivots around. Set to the Head so turning rotates the world about the " +
-                 "viewer instead of orbiting them around the root origin. Falls back to the wand if unset.")]
+        [Tooltip("What yaw pivots around. Use the Head so you turn in place. Falls back to the wand if unset.")]
         public Transform turnPivot;
 
         [Header("VRPN Device")]
-        [Tooltip("VRPN analog device address for the wand's stick/arrows. This is the Omicron VRPNDevice " +
-                 "(gamepad) address, NOT the Vicon pose device - Vicon carries no analog channels.")]
-        public string analogDevice = "Controller0@TRACKER_HOST";
+        [Tooltip("VRPN analog device for the wand's stick and arrows. Use the Omicron device: the Vicon " +
+                 "pose device has no analog channels.")]
+        public string analogDevice = "Controller0@localhost";
 
         [Tooltip("VRPN button device address. Normally the same as analogDevice.")]
-        public string buttonDevice = "Controller0@TRACKER_HOST";
+        public string buttonDevice = "Controller0@localhost";
 
         [Header("Analog Channels (0-based; trackd valNN is channel NN-1)")]
         [Tooltip("Stick X, trackd val01. Left -1 / right +1.")]
@@ -69,16 +35,15 @@ namespace UniCAVE
         [Tooltip("Stick Y, trackd val02. Back -1 / forward +1.")]
         public int forwardAxis = 1;
 
-        [Tooltip("Arrow pad X as an ANALOG channel. On the CAVE2 wand the arrows are buttons, not " +
-                 "analog, so leave this at -1 and use the arrow button fields below. Kept for rigs " +
-                 "whose VRPN device does expose the D-pad as an axis.")]
+        [Tooltip("Arrow pad X as an analog channel, -1 to disable. The CAVE2 wand reports its arrows " +
+                 "as buttons, so it uses the button fields below instead.")]
         public int arrowStrafeAxis  = -1;
-        [Tooltip("Arrow pad Y as an ANALOG channel. See arrowStrafeAxis; -1 disables.")]
+        [Tooltip("Arrow pad Y as an analog channel, -1 to disable.")]
         public int arrowForwardAxis = -1;
 
         [Header("Arrow Pad Buttons (CAVE2 wand publishes the D-pad as buttons)")]
-        [Tooltip("Button index for arrow up. -1 disables. Determine by pressing one arrow at a time " +
-                 "with debugLogChannels on; on CAVE2 the four arrows are among indices 3,4,5,6.")]
+        [Tooltip("Button index for arrow up, -1 to disable. Find it by pressing one arrow at a time " +
+                 "with debugLogChannels on; on CAVE2 the arrows are among 3, 4, 5 and 6.")]
         public int arrowUpButton    = -1;
         [Tooltip("Button index for arrow down. -1 disables.")]
         public int arrowDownButton  = -1;
@@ -113,17 +78,14 @@ namespace UniCAVE
         [Tooltip("Dead zone for the stick (combined magnitude).")]
         public float deadZone = 0.15f;
 
-        [Tooltip("Project the wand's forward/right to the horizontal plane. " +
-                 "Recommended: tilting the wand up or down should not make the CAVE rise or sink " +
-                 "(avoids motion sickness and keeps navigation predictable).")]
+        [Tooltip("Keep movement horizontal, so tilting the wand does not make the CAVE rise or sink.")]
         public bool horizontalOnly = true;
 
         [Header("Axis Inversion")]
         [Tooltip("Invert stick X if strafing goes the wrong way.")]
         public bool invertStrafe  = false;
-        [Tooltip("Invert stick Y if pushing the stick up moves you backward. The CAVE2 wand is an " +
-                 "XInput pad behind Omicron and reports +1 for both right and up, so both inverts " +
-                 "are off by default here (unlike most raw VRPN gamepad drivers).")]
+        [Tooltip("Invert stick Y if pushing the stick up moves you backward. The CAVE2 wand reports +1 " +
+                 "for right and for up, so both inverts are off by default.")]
         public bool invertForward = false;
         [Tooltip("Invert the arrow pad X axis.")]
         public bool invertArrowStrafe  = false;
@@ -133,23 +95,17 @@ namespace UniCAVE
         public bool invertTurn = false;
 
         [Header("Interleaved Source Filter")]
-        [Tooltip("Omicron publishes every WandService (controllerSourceId 0..3) onto the SAME VRPN " +
-                 "analog/button channels, so an idle second wand interleaves all-zero reports with the " +
-                 "real ones and movement pulses at ~20Hz. VRPN carries no source id, so we cannot tell " +
-                 "them apart; holding the last significant value briefly bridges the zero rows.\n\n" +
-                 "This is source-agnostic: whichever wand is actually being moved wins, so Wand_Robin " +
-                 "works exactly as well as Wand_Batman. Only simultaneous use of two wands is ambiguous, " +
-                 "and that is inherent to Omicron sharing one device, not caused by this filter.")]
+        [Tooltip("Omicron sends every wand on the same VRPN channels, so an idle second wand mixes " +
+                 "zero reports into the real ones and movement stutters. Holding the last non-zero value " +
+                 "for a moment hides them. The wand being moved wins; two wands used at once stay ambiguous.")]
         public bool holdLastValue = true;
 
-        [Tooltip("How long to hold the last significant value, in seconds. Must exceed the gap between " +
-                 "two real reports (XInputService runs at 0.05s per service). Too high and the CAVE " +
-                 "coasts after you let go.")]
+        [Tooltip("Seconds to hold the last non-zero value. Must exceed the gap between real reports " +
+                 "(0.05 s per wand); too long and the CAVE coasts after you let go.")]
         public float holdTime = 0.15f;
 
         [Header("Debug")]
-        [Tooltip("Log every analog channel and pressed button ~2x/second on the server. " +
-                 "Use this to confirm the channel mapping on the live rig, then turn it off.")]
+        [Tooltip("Log every analog channel and pressed button twice a second, to check the mapping on the rig.")]
         public bool debugLogChannels = false;
         [Tooltip("How many analog channels to scan when debugLogChannels is on.")]
         public int debugChannelCount = 8;
@@ -186,8 +142,7 @@ namespace UniCAVE
             startPosition = transform.position;
             startRotation = transform.rotation;
 
-            // Always logged, not gated on debugLogChannels: if this line is absent from the player
-            // log the component never ran at all, which is a different problem from bad channels.
+            // Always logged: if this line is missing from the player log, the component never ran.
             Debug.Log($"[WandLocomotion] Start on '{Util.GetMachineName()}' IsServer={IsServer} " +
                       $"vrpnPluginAvailable={VRPN.IsAvailable} analog='{analogDevice}' " +
                       $"button='{buttonDevice}' wand={(wand == null ? "NULL" : wand.name)}");
@@ -195,8 +150,7 @@ namespace UniCAVE
 
         void Update()
         {
-            // Deliberately ahead of the early-outs below, so the log still shows what is happening
-            // when the component is inactive rather than going silent and looking like dead input.
+            // Before the early-outs, so the log keeps running when they skip the rest.
             if(debugLogChannels) LogChannels();
 
             if(!IsServer) return;
@@ -214,8 +168,7 @@ namespace UniCAVE
 
             float dt = Time.deltaTime;
 
-            // --- Buttons ---
-            // Filtered too: an idle wand's "released" reports would otherwise clear a held button.
+            // Buttons are filtered too: an idle wand's "released" reports would clear a held button.
             bool sprint = sprintButton >= 0 &&
                           FilterButton(VRPN.vrpnButton(buttonDevice, sprintButton), ref sprintHeldTime);
             float speedMul = sprint ? sprintMultiplier : 1f;
@@ -232,7 +185,6 @@ namespace UniCAVE
                 }
             }
 
-            // --- Read the stick ---
             float lx = (float)VRPN.vrpnAnalog(analogDevice, strafeAxis);
             float ly = (float)VRPN.vrpnAnalog(analogDevice, forwardAxis);
 
@@ -241,9 +193,7 @@ namespace UniCAVE
 
             Vector2 move = FilterStick(new Vector2(lx, ly));
 
-            // --- Read the arrow pad and fold it into the actions it drives ---
-            // Analog path (most rigs) plus button path (CAVE2, where the D-pad is discrete buttons).
-            // Both are summed so either wiring works, then clamped back to a unit axis.
+            // Analog and button arrows are summed so either wiring works, then clamped.
             float ax = ReadArrow(arrowStrafeAxis, ref heldArrowX, ref heldArrowXTime);
             float ay = ReadArrow(arrowForwardAxis, ref heldArrowY, ref heldArrowYTime);
 
@@ -263,19 +213,16 @@ namespace UniCAVE
             ApplyArrow(arrowStrafeAction,  ax, isStrafeAxis: true,  ref move, ref turn, ref vertical);
             ApplyArrow(arrowForwardAction, ay, isStrafeAxis: false, ref move, ref turn, ref vertical);
 
-            // --- Translate along the wand's horizontal facing ---
             if(move.sqrMagnitude > 1e-6f)
             {
                 move = Vector2.ClampMagnitude(move, 1f);
                 if(TryGetBasis(out Vector3 wandForward, out Vector3 wandRight))
                 {
-                    // World-space translation on the CAVE root. UCNetwork picks up
-                    // transform.position and replicates to clients next frame.
                     transform.position += dt * moveSpeed * speedMul * (wandRight * move.x + wandForward * move.y);
                 }
             }
 
-            // --- Yaw around the viewer, so turning does not orbit them ---
+            // Yaw around the viewer, so turning does not orbit them.
             if(Mathf.Abs(turn) > 1e-6f)
             {
                 if(invertTurn) turn = -turn;
@@ -283,7 +230,6 @@ namespace UniCAVE
                 transform.RotateAround(pivot, Vector3.up, turn * turnSpeed * dt);
             }
 
-            // --- Vertical, always world up ---
             if(Mathf.Abs(vertical) > 1e-6f)
             {
                 transform.position += Vector3.up * (vertical * verticalSpeed * speedMul * dt);
@@ -332,11 +278,7 @@ namespace UniCAVE
             return Vector2.zero;
         }
 
-        /// <summary>
-        /// Turn an opposed pair of arrow buttons into a -1..+1 axis. Both go through the same
-        /// hold filter as every other button, which matters here because the interleaved wand
-        /// emits a "released" immediately after each "pressed".
-        /// </summary>
+        /// <summary>Turns two opposed arrow buttons into a -1..+1 axis, through the same hold filter as the other buttons.</summary>
         private float ReadArrowButtons(int positive, int negative, ref float posTime, ref float negTime)
         {
             float v = 0f;
@@ -415,10 +357,7 @@ namespace UniCAVE
             return true;
         }
 
-        /// <summary>
-        /// Dump the raw analog/button state so the trackd mapping can be confirmed against
-        /// what VRPN actually delivers. Throttled so it does not flood the player log.
-        /// </summary>
+        /// <summary>Logs the raw analog and button state, at most twice a second.</summary>
         private void LogChannels()
         {
             if(Time.unscaledTime < nextDebugLogTime) return;

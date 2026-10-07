@@ -1405,7 +1405,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.VRPNTrack
   ShowTopMostFoldoutHeaderGroup: 1
-  trackerAddress: Wand_Robin@TRACKER_HOST
+  trackerAddress: Wand_Batman@TRACKER_HOST
   channel: 0
   trackPosition: 1
   trackRotation: 1
@@ -2180,7 +2180,6 @@ GameObject:
   - component: {fileID: 3273338556149026758}
   - component: {fileID: 7074373084133252954}
   - component: {fileID: 1088019340149064979}
-  - component: {fileID: 3553445376671367752}
   - component: {fileID: 5433479464422604797}
   - component: {fileID: 4190087043327839483}
   m_Layer: 0
@@ -2226,7 +2225,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 537779916
+  GlobalObjectIdHash: 4162407135
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2303,7 +2302,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7851983900161051920}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a9f6f02dffaf5814ab0de75605290cf9, type: 3}
   m_Name: 
@@ -2318,22 +2317,6 @@ MonoBehaviour:
   turnSpeed: 10
   invertTurn: 0
   verticalSpeed: 1
---- !u!114 &3553445376671367752
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7851983900161051920}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1eb6c506b05d4a43a017bc1e289ab99, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::GaussianSplatting.GSBenchmarkController
-  ShowTopMostFoldoutHeaderGroup: 1
-  autoNavigator: {fileID: 5433479464422604797}
-  logToggles: 1
-  replayAckTimeout: 5
 --- !u!114 &5433479464422604797
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2387,7 +2370,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.WandLocomotion
   ShowTopMostFoldoutHeaderGroup: 1
-  wand: {fileID: 6666066506606236530}
+  wand: {fileID: 2899470805776604716}
   turnPivot: {fileID: 2899470805776604716}
   analogDevice: Navigation@TRACKER_HOST:3894
   buttonDevice: Navigation@TRACKER_HOST:3894

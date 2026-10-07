@@ -5,7 +5,7 @@ Fork of [UniCAVE](https://github.com/livingenvironmentslab/UniCAVE) 2.0.1
 GameObjects and URP. Adds:
 
 * **Row-interleaved passive stereo** for EVL's CAVE2 Planar polarized panels
-  (URP renderer feature plus per-display flags).
+  (per-display flags; the composite pass needs no renderer setup).
 * **Multi-instance window repositioning** that works on cluster nodes
   spawning more than one Unity process at a time.
 * **CAVE2 cluster prefab** (`Prefabs/CAVE2.prefab`) wired for a 7-node /
@@ -31,6 +31,8 @@ ARCADE2 rigs.
   template ships this).
 * **Netcode for GameObjects 2.9.x**.
 * **Input System 1.19.x**.
+* **uGUI with TextMeshPro** (`com.unity.ugui`, present in new Unity 6
+  projects), used by the calibration info display.
 
 URP is already present in the Universal 3D template. Netcode for
 GameObjects and Input System are not; install them before importing the
@@ -84,7 +86,11 @@ one `Head`, and one `PhysicalDisplay` child per physical screen.
 | `Prefabs/CAVE2.prefab` | EVL CAVE2 | 22 (columns A to R, plus 4 back-wall segments) | Row-interleaved passive | 22, spread over 7 nodes |
 | `Prefabs/ARCADE2.prefab` | EVL ARCADE2 | 2 side-by-side 3D displays | Dual-pipe side-by-side | 2, both on one PC (2 GPUs) |
 | `Prefabs/ARCADE.prefab` | ARCADE, single screen | 1 side-by-side 3D display | Dual-pipe side-by-side, exclusive fullscreen | 1 |
-| `Prefabs/UW/*.prefab` | Upstream UW layouts | varies | varies | untested against this port |
+| `Prefabs/PROJECTOR.prefab` | Single 3D projector | 1 screen, 2.2 x 1.24 m | Dual-pipe side-by-side, exclusive fullscreen | 1 |
+
+`Scenes/` has a ready example for three of them: `CAVE2.unity`,
+`ARCADE.unity` (ARCADE2) and `Projector.unity`, each with its Network
+Manager already wired.
 
 Sections below are split into setup common to any rig, then the two
 rig-specific paths, then what you need to know to describe a rig of your
@@ -100,8 +106,7 @@ own.
    package). After this, `Assets/MyUniCAVE/` is present and compiles
    cleanly.
 
-3. **Open or create the scene** that will host the CAVE
-   (e.g. `Assets/Scenes/CAVE-demo.unity`).
+3. **Open or create the scene** that will host the CAVE.
 
 4. **Add a Netcode Network Manager to the scene.** No prefab in this
    package includes one; following the upstream UniCAVE convention, the
@@ -191,18 +196,26 @@ Continue from part 1 with `Prefabs/CAVE2.prefab`.
      `useRenderTextures` overwrites them with `renderTextureSize` ones
      and breaks the composite.
 
-3. **Add the `RowInterleaveStereoFeature` to the URP Renderer asset**
-   used by this scene. **Project Settings > Graphics > URP Renderer >
-   Renderer Features > Add Renderer Feature > Row Interleave Stereo
-   Feature**. This is what owns the composite shader; without it,
-   builds will ship without the row interleave pass.
+3. **No renderer setup is needed.** `PhysicalDisplay` adds a
+   `RowInterleaveStereo` component to a compositing camera, and that
+   component injects its own composite pass into URP. The shader sits
+   in `Shaders/Resources/`, so player builds always include it.
 
-4. **Verify the head tracking source** in `VRPNTrack` (a child of the
-   `Head` node): `trackerAddress = <Vicon-body-name>@<tracking-server-ip>`.
-   The shipped CAVE2 prefab uses `Head_Tracker@TRACKER_HOST`. Pose and
-   controller input come from two different servers on that host: Vicon
-   publishes pose on the default port, and the Omicron server publishes
-   buttons and analog as a single `Navigation` device on port 3894.
+4. **Set the tracking server.** The prefab's VRPN addresses use the
+   placeholder host `TRACKER_HOST`: `Head_Tracker@TRACKER_HOST` and
+   `Wand_Batman@TRACKER_HOST` for the head and wand poses (Vicon), and
+   `Navigation@TRACKER_HOST:3894` for the wand's buttons and stick
+   (Omicron). At runtime `TRACKER_HOST` is replaced by the
+   `trackerHost <address>` argument, which `launch.ps1` passes from the
+   `TrackerHost` field of `nodes.json`. The shipped `nodes.json` leaves it
+   empty, so this repository does not contain the server's address.
+   **To track in the EVL CAVE2 you need the private CAVE2 `nodes.json`:**
+   ask the CAVE2 maintainers for it, put it in a `CAVEScripts` folder at
+   your project root (see Cluster deployment), and keep it out of public
+   repositories. Without it, a device whose address still holds
+   `TRACKER_HOST` is disabled with a warning and the rest runs normally.
+   On another rig you can also type the full address in place of the
+   placeholder.
 
 5. **Add scene content** as siblings of `Head` and the displays or at
    hierarchy root, inside the CAVE2 prefab. Anything inside the prefab
@@ -249,8 +262,7 @@ process.
    display expects (6720x1890), and `leftViewport`/`rightViewport` cut
    it into two 3360x1890 halves that the panel sends to one eye each.
    The cameras render straight to the back buffer through
-   `Camera.rect`, so no RenderTextures and no renderer feature are
-   involved.
+   `Camera.rect`, so no RenderTextures are involved.
 
 4. **Fix eye order per panel if needed.** Which half feeds which eye
    depends on the individual display, so a panel can come up with the
@@ -293,8 +305,9 @@ Pressing it on a client does nothing.
 | `F5` | Toggle stereo/mono. In mono the right eye renders from the left eye's position, so both halves of the signal match |
 | `Esc` | Quit every instance |
 
-Gamepad navigation is handled separately by `GamepadLocomotion` so the
-two never fight over the root transform.
+The gamepad is read by `GamepadLocomotion` and the CAVE2 wand by
+`WandLocomotion`. The CAVE2 prefab enables only `WandLocomotion`: with
+both on, wand movement comes out inverted.
 
 ## Building a rig of your own
 
@@ -311,7 +324,7 @@ row matching your hardware and leave the other flags false.
 | Hardware | Flags | Extra setup |
 |---|---|---|
 | 2D screen or projector | `is3D = false` | One centre camera, nothing else |
-| Micropolarized passive panel | `is3D`, `rowInterleaved` | Add `RowInterleaveStereoFeature` to the URP renderer; keep `useRenderTextures` false |
+| Micropolarized passive panel | `is3D`, `rowInterleaved` | Keep `useRenderTextures` false; no renderer setup |
 | Side-by-side 3D display | `is3D`, `dualPipe` | Set `windowBounds` to the full signal and split it with `leftViewport`/`rightViewport` |
 | One process per eye | `is3D`, `dualPipe`, `dualInstance` | Pass `eye left` or `eye right` on the command line; each process sizes its window from its own viewport |
 | Quad-buffered stereo | `is3D` only | Requires XR Plugin Management with a quad-buffer loader |
@@ -325,11 +338,10 @@ row matching your hardware and leave the other flags false.
 * `width` and `height`: the screen's real size in metres. These drive
   the off-axis projection and are unrelated to resolution.
 * `head`: the shared `HeadConfiguration` child. All displays in a rig
-  point at the same one, which is what keeps the eye positions
-  consistent across nodes.
+  point at the same one, so the eye positions match across nodes.
 * `windowBounds`: absolute Windows desktop rect for this process's
-  window. On a multi-screen desktop this is what places the window on
-  the correct panel.
+  window. On a multi-screen desktop it places the window on the right
+  panel.
 * The display's transform position and rotation must describe where the
   screen physically sits relative to the viewer, in metres, with the
   screen facing inward.
@@ -349,18 +361,31 @@ The package ships with launcher templates under `CAVEScripts/`:
 
 | File | Purpose |
 |---|---|
-| `launch.ps1` | Spawns instances. On the master: one headless host. On a display node: one instance per GPU listed in `nodes.json`, each pinned to its target column or row via `-force-device-index` and `-monitor`. |
+| `launch.ps1` | Spawns instances. On the master: one host instance (headless if `Master.Headless` is true). On a display node: one instance per GPU listed in `nodes.json`, each pinned to its target column or row via `-force-device-index` and `-monitor`. |
 | `launch_arcade.ps1` | Single-PC variant for ARCADE2: starts the head and the client on loopback, one per GPU, and foregrounds the head window for keyboard input. Instance list is inline at the top of the script. |
-| `kill.ps1` | Terminates every running `UniCAVE-GS.exe` on the host. |
-| `nodes.json` | Hostname-to-virtual-name mapping, master address, and exe name. Used by `launch.ps1`. Edit before building to match your cluster. |
+| `kill.ps1` | Terminates every running player on the host: every process started from an exe in the script's folder or below it, or every process named by `-ExeName`. |
+| `nodes.json` | Hostname-to-virtual-name mapping, master address, an optional exe name, and the tracking server (`TrackerHost`, empty in the package). Used by `launch.ps1`. Edit before building to match your cluster. |
 
 Edit `nodes.json` to match your hardware (master hostname/IP, per-node
-GPU list, exe name), then build. The post-build hook copies every file
-in `CAVEScripts/` next to the exe, so each node is self-contained.
+GPU list), then build. Leave `ExeName` empty to use the only exe in the
+build folder. The post-build hook copies every file in `CAVEScripts/`
+next to the exe, so each node is self-contained.
 
-For the full CAVE2 cluster setup (network/SMB share, Mechdyne Cluster
-Tools Service buttons, screen layout, deployment runbook), see the
-documentation in the consuming project's repository.
+To change these files for one project without editing the package, put
+your own copies in a `CAVEScripts` folder at the project root, beside
+`Assets`. The hook copies them after the package's files, so they
+replace them in the build. This is where the private CAVE2 `nodes.json`
+with `TrackerHost` goes.
+
+Both launchers pass extra player arguments to every instance through
+`-ExtraArgs`, as a single string:
+
+```powershell
+.\launch.ps1 -ExtraArgs "-myFlag -myValue 3"
+```
+
+For the full CAVE2 cluster setup and deployment, ask the CAVE2
+maintainers at EVL.
 
 ## License
 

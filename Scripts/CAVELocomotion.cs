@@ -4,25 +4,15 @@ using Unity.Netcode;
 namespace UniCAVE
 {
     /// <summary>
-    /// VRPN-based locomotion for the UniCAVE root.
-    /// Reads a VRPN gamepad's analog sticks/triggers (and a sprint button) and
-    /// drives the CAVE root. Server-only; UCNetwork replicates the root transform
-    /// to every display node.
-    ///
-    /// IMPORTANT: analogDevice/buttonDevice must point at a VRPN device that
-    /// actually carries button/analog channels (a gamepad). Vicon Tracker's VRPN
-    /// output is POSE-ONLY, so Head_Tracker / Wand_Batman will NOT work here.
-    /// Source the stick from Omicron's VRPNDevice (its VRPN gamepad output) or a
-    /// standalone gamepad vrpn_server. Until that source exists these reads return
-    /// 0 and the CAVE simply won't move (pose tracking is unaffected).
-    ///
-    /// Attach to the UniCAVE root (same GameObject as UCNetwork).
+    /// Moves the CAVE root with a gamepad read over VRPN (sticks, triggers and a sprint button). The
+    /// device must carry analog channels, such as Omicron's VRPN gamepad output; a Vicon pose device
+    /// has none, so the root would not move. Server-only; UCNetwork replicates the root.
     /// </summary>
     public class CAVELocomotion : NetworkBehaviour
     {
-        [Header("VRPN gamepad device (NOT a Vicon pose device)")]
-        public string analogDevice = "Controller0@TRACKER_HOST";
-        public string buttonDevice = "Controller0@TRACKER_HOST";
+        [Header("VRPN gamepad device (not a Vicon pose device)")]
+        public string analogDevice = "Controller0@localhost";
+        public string buttonDevice = "Controller0@localhost";
 
         [Header("Analog Channels")]
         [Tooltip("Left stick X (strafe)")]
@@ -77,7 +67,7 @@ namespace UniCAVE
             bool sprint = VRPN.vrpnButton(buttonDevice, sprintButton);
             float speedMul = sprint ? sprintMultiplier : 1f;
 
-            // --- Movement (left stick) ---
+            // Left stick moves.
             Vector2 move = new Vector2(lx, ly);
             if(move.magnitude > deadZone)
             {
@@ -85,7 +75,7 @@ namespace UniCAVE
                 transform.Translate(move.x * moveSpeed * speedMul * dt, 0f, move.y * moveSpeed * speedMul * dt, Space.Self);
             }
 
-            // --- Rotation (right stick) ---
+            // Right stick turns and pitches.
             Vector2 look = new Vector2(rx, ry);
             if(look.magnitude > deadZone)
             {
@@ -94,7 +84,7 @@ namespace UniCAVE
                 transform.Rotate(look.y * turnSpeed * dt, 0f, 0f, Space.Self);    // pitch around local right
             }
 
-            // --- Vertical (triggers) ---
+            // Triggers fly up and down.
             float vertical = Mathf.Clamp01(rt) - Mathf.Clamp01(lt);
             if(Mathf.Abs(vertical) > 0.01f)
             {

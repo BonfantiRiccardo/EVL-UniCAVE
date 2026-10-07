@@ -13,6 +13,7 @@
 //TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using UnityEngine;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace UniCAVE
@@ -30,6 +31,32 @@ namespace UniCAVE
 
         private static bool _dllAvailable = true;
         private static bool _dllWarningLogged = false;
+
+        private const string HostToken = "TRACKER_HOST";   // replaced by the "trackerHost <host>" launch argument
+        private static string _trackerHost;
+        private static bool _trackerHostRead;
+        private static readonly Dictionary<string, string> _resolved = new Dictionary<string, string>();
+
+        /// <summary>
+        /// The address with TRACKER_HOST replaced by the trackerHost launch argument, so a prefab can ship
+        /// without the tracking server's address. Null when the argument is missing.
+        /// </summary>
+        public static string ResolveAddress(string address)
+        {
+            if(address == null || address.IndexOf(HostToken, System.StringComparison.Ordinal) < 0) return address;
+            if(_resolved.TryGetValue(address, out string resolved)) return resolved;
+
+            if(!_trackerHostRead)
+            {
+                _trackerHost = Util.GetArg("trackerHost");
+                _trackerHostRead = true;
+            }
+            resolved = string.IsNullOrEmpty(_trackerHost) ? null : address.Replace(HostToken, _trackerHost);
+            if(resolved == null)
+                Debug.LogWarning("VRPN: '" + address + "' needs the trackerHost launch argument (TrackerHost in nodes.json); this device is disabled.");
+            _resolved[address] = resolved;
+            return resolved;
+        }
 
         private static void LogDllWarning(System.Exception e)
         {
@@ -49,6 +76,8 @@ namespace UniCAVE
         public static double vrpnAnalog(string address, int channel)
         {
             if(!_dllAvailable) return 0.0;
+            address = ResolveAddress(address);
+            if(address == null) return 0.0;
             try { return vrpnAnalogExtern(address, channel, Time.frameCount); }
             catch(System.DllNotFoundException e) { LogDllWarning(e); return 0.0; }
             catch(System.EntryPointNotFoundException e) { LogDllWarning(e); return 0.0; }
@@ -57,6 +86,8 @@ namespace UniCAVE
         public static bool vrpnButton(string address, int channel)
         {
             if(!_dllAvailable) return false;
+            address = ResolveAddress(address);
+            if(address == null) return false;
             try { return vrpnButtonExtern(address, channel, Time.frameCount); }
             catch(System.DllNotFoundException e) { LogDllWarning(e); return false; }
             catch(System.EntryPointNotFoundException e) { LogDllWarning(e); return false; }
@@ -72,6 +103,8 @@ namespace UniCAVE
         public static bool vrpnButton(string address, int channel, int frameCount)
         {
             if(!_dllAvailable) return false;
+            address = ResolveAddress(address);
+            if(address == null) return false;
             try { return vrpnButtonExtern(address, channel, frameCount); }
             catch(System.DllNotFoundException e) { LogDllWarning(e); return false; }
             catch(System.EntryPointNotFoundException e) { LogDllWarning(e); return false; }
@@ -82,11 +115,11 @@ namespace UniCAVE
         public static Vector3 vrpnTrackerPos(string address, int channel)
         {
             if(!_dllAvailable) return Vector3.zero;
+            address = ResolveAddress(address);
+            if(address == null) return Vector3.zero;
             try
             {
-                // Vicon (Y-up, meters, right-handed) -> Unity (Y-up, left-handed):
-                // flip Z only. x = vicon.x, y = vicon.y, z = -vicon.z. Confirmed with a
-                // CAVE2 cube parallax test on 2026-07-08.
+                // Vicon is right-handed and Unity left-handed, both Y-up: flip Z.
                 return new Vector3(
                     (float)vrpnTrackerExtern(address, channel, 0, Time.frameCount),
                     (float)vrpnTrackerExtern(address, channel, 1, Time.frameCount),
@@ -99,13 +132,12 @@ namespace UniCAVE
         public static Quaternion vrpnTrackerQuat(string address, int channel)
         {
             if(!_dllAvailable) return Quaternion.identity;
+            address = ResolveAddress(address);
+            if(address == null) return Quaternion.identity;
             try
             {
-                // Match the position mapping (flip Z only, right-handed -> left-handed):
-                // (qx,qy,qz,qw) -> (-qx,-qy,qz,qw). The Wand_Batman rigid-body local
-                // axes may still be offset from the wand's physical "forward" - align
-                // that with VRPNTrack.trackerRotationOffset. If rotation comes out
-                // MIRRORED, try (qx, qy, -qz, -qw) instead.
+                // Same Z flip for the rotation: (qx, qy, qz, qw) -> (-qx, -qy, qz, qw). A rigid body
+                // whose axes differ from the device's is aligned with VRPNTrack.trackerRotationOffset.
                 return new Quaternion(
                     -(float)vrpnTrackerExtern(address, channel, 3, Time.frameCount),
                     -(float)vrpnTrackerExtern(address, channel, 4, Time.frameCount),

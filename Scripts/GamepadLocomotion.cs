@@ -5,20 +5,9 @@ using Unity.Netcode;
 namespace UniCAVE
 {
     /// <summary>
-    /// Gamepad-driven locomotion for the UniCAVE root, using a standard gamepad
-    /// (e.g. a wireless Xbox controller paired to the master) read through Unity's
-    /// Input System. No VRPN / Omicron needed.
-    ///
-    ///   Left stick   : move relative to directionSource's forward/right (ground-projected).
-    ///   Right stick X: turn (yaw the whole CAVE around the viewer).
-    ///   Triggers     : right trigger = up, left trigger = down.
-    ///
-    /// Set directionSource to the Head (glasses) for "move where I look", or to the
-    /// tracked Wand for "move where I point".
-    ///
-    /// Attach to the UniCAVE root (same GameObject as UCNetwork). Server-only; the
-    /// resulting root transform is replicated to all display nodes by UCNetwork.
-    /// Move, turn and vertical are handled independently so any one works on its own.
+    /// Moves the CAVE root with a standard gamepad read through the Input System: the left stick moves,
+    /// the right stick turns, the triggers fly up and down. Server-only; UCNetwork replicates the root.
+    /// Keep it off in scenes driven by the CAVE2 wand: with both on, wand movement comes out inverted.
     /// </summary>
     public class GamepadLocomotion : NetworkBehaviour
     {
@@ -64,7 +53,7 @@ namespace UniCAVE
 
             float dt = Time.deltaTime;
 
-            // --- Move: left stick, relative to directionSource ---
+            // Left stick moves relative to directionSource.
             Vector2 stick = gp.leftStick.ReadValue();
             float lx = invertStrafe  ? -stick.x : stick.x;
             float ly = invertForward ? -stick.y : stick.y;
@@ -104,7 +93,7 @@ namespace UniCAVE
                     transform.position += dt * moveSpeed * (right * move.x + fwd * move.y);
             }
 
-            // --- Turn: right stick X, yaw around the viewer (no orbiting) ---
+            // Right stick X turns around the viewer.
             float turn = gp.rightStick.ReadValue().x;
             if(invertTurn) turn = -turn;
             if(Mathf.Abs(turn) > deadZone)
@@ -112,7 +101,7 @@ namespace UniCAVE
                 transform.RotateAround(directionSource.position, Vector3.up, turn * turnSpeed * dt);
             }
 
-            // --- Up / down: triggers (right = up, left = down), world vertical ---
+            // Right trigger up, left trigger down.
             float vertical = gp.rightTrigger.ReadValue() - gp.leftTrigger.ReadValue();
             if(Mathf.Abs(vertical) > 0.01f)
             {

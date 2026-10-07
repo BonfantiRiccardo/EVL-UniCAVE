@@ -32,9 +32,8 @@ namespace UniCAVE
 
         public NetworkManager networkManager;
 
-        [Tooltip("Cap the main loop to this framerate. Set to 60 for 60 Hz displays. " +
-                 "This applies even on the head machine where VSync has no effect because " +
-                 "no swap chain is being presented (no eye cameras → nothing to vblank against).")]
+        [Tooltip("Caps the main loop at this frame rate; match the display refresh rate. It also " +
+                 "applies on a head machine that renders nothing, where VSync has no effect.")]
         public int targetFrameRate = 240; 
 
         [SerializeField]
@@ -57,10 +56,7 @@ namespace UniCAVE
         /// </summary>
         void Start()
         {
-            // Cap the main loop. VSync only works when a swap chain is being
-            // presented; on the head machine no eye cameras are created so the
-            // loop spins at 1000+ FPS regardless of vSyncCount. targetFrameRate
-            // throttles via sleep and works whether or not anything renders.
+            // VSync does nothing on a head machine that renders nothing, so cap the loop here.
             if(targetFrameRate > 0)
             {
                 Application.targetFrameRate = targetFrameRate;
@@ -103,9 +99,7 @@ namespace UniCAVE
 
         void OnDestroy()
         {
-            // Ensure the NetworkManager shuts down cleanly to dispose native
-            // NetworkDriver allocations (NativeList<int>, NetworkEventQueue, etc.).
-            // Without this, Unity reports persistent allocation leaks on exit.
+            // Shut down cleanly, or the native NetworkDriver allocations are reported as leaks on exit.
             if (networkManager != null && (networkManager.IsClient || networkManager.IsServer || networkManager.IsListening))
             {
                 networkManager.Shutdown();

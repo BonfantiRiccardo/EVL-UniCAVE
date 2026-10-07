@@ -41,9 +41,8 @@ namespace UniCAVE
         private const int DELAY = 2;       // min frames to wait before first attempt
         private const int MAX_RETRIES = 60; // give up after ~1 second at 60 fps
 
-        // Find the top-level Unity window belonging to the current process.
-        // GetActiveWindow() only works for the foreground instance, which breaks
-        // multi-instance launches where only one process can be foreground at a time.
+        // Top-level Unity window of this process. GetActiveWindow() only sees the foreground
+        // instance, so it fails when one PC runs several instances.
         private static IntPtr FindMyMainWindow()
         {
             int myPid = Process.GetCurrentProcess().Id;
@@ -90,10 +89,8 @@ namespace UniCAVE
         {
             if(!_pending) return true;
 
-            // Never reposition with unset/invalid dimensions. This guards managed
-            // (CAVE2) and exclusive-fullscreen displays, which never call
-            // SetMyWindowInfo and would otherwise get SetWindowPos(-1,-1,-1,-1)
-            // plus Screen.SetResolution(-1,-1), collapsing the window/backbuffer.
+            // Managed and exclusive-fullscreen displays never call SetMyWindowInfo, so no size is
+            // set; moving them would collapse the window.
             if(_desiredWidth <= 0 || _desiredHeight <= 0)
             {
                 _pending = false;

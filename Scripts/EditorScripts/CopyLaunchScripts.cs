@@ -9,10 +9,9 @@ using UnityEngine;
 namespace UniCAVE
 {
     /// <summary>
-    /// After every Windows standalone build, copy the contents of the package's
-    /// CAVEScripts folder next to the built .exe. This keeps launch.ps1,
-    /// kill.ps1, and nodes.json bundled with every build so CTS can invoke
-    /// them directly on each node without a separate deploy step.
+    /// After every Windows build, copies the package's CAVEScripts folder next to the exe, so each
+    /// synced build folder carries its own launch scripts. Files in a CAVEScripts folder at the
+    /// project root (beside Assets) are copied afterwards and replace the package's ones.
     /// </summary>
     public class CopyLaunchScripts : IPostprocessBuildWithReport
     {
@@ -31,26 +30,33 @@ namespace UniCAVE
                 return;
             }
 
+            int copied = CopyFiles(srcDir, buildDir);
+            Debug.Log($"[CopyLaunchScripts] copied {copied} file(s) from {srcDir} to {buildDir}");
+
+            string projectDir = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "CAVEScripts"));
+            if(Directory.Exists(projectDir))
+            {
+                int replaced = CopyFiles(projectDir, buildDir);
+                Debug.Log($"[CopyLaunchScripts] copied {replaced} project file(s) from {projectDir} to {buildDir}");
+            }
+        }
+
+        private static int CopyFiles(string srcDir, string buildDir)
+        {
             int copied = 0;
             foreach(string src in Directory.GetFiles(srcDir))
             {
                 string name = Path.GetFileName(src);
                 if(name.Equals("README.md", System.StringComparison.OrdinalIgnoreCase)) continue;
                 if(name.EndsWith(".meta", System.StringComparison.OrdinalIgnoreCase)) continue;
-                string dst = Path.Combine(buildDir, name);
-                File.Copy(src, dst, overwrite: true);
+                File.Copy(src, Path.Combine(buildDir, name), overwrite: true);
                 copied++;
             }
-            Debug.Log($"[CopyLaunchScripts] copied {copied} file(s) from {srcDir} to {buildDir}");
+            return copied;
         }
 
-        // Locates the CAVEScripts folder relative to this .cs file. CallerFilePath
-        // is resolved at compile time, so it points to wherever Unity actually
-        // compiled the package from (Assets/ or Packages/). The folder layout the
-        // walk-up assumes:
-        //   <PackageRoot>/
-        //     Scripts/EditorScripts/CopyLaunchScripts.cs  <- this file
-        //     CAVEScripts/                                <- target
+        // CallerFilePath is fixed at compile time, so CAVEScripts is found two folders above this
+        // file wherever the package was imported (Assets/ or Packages/).
         private static string ResolveCaveScriptsDir([CallerFilePath] string thisFile = null)
         {
             string editorDir = Path.GetDirectoryName(thisFile);                  // .../Scripts/EditorScripts

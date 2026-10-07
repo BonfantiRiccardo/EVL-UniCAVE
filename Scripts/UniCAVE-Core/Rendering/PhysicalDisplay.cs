@@ -313,8 +313,7 @@ namespace UniCAVE
                 errors.Add("Physical Display uses a certain display but the Unity Player isn't using DirectX");
             }
 
-            // Note: XRSettings.supportedDevices is deprecated in Unity 6+.
-            // Quad-buffered stereo requires XR Plugin Management with the appropriate loader.
+            // Quad-buffered stereo needs XR Plugin Management with a quad-buffer loader.
             if(is3D && !dualPipe && !dualInstance)
             {
                 errors.Add(gameObject.name + " is configured for quad-buffered stereo. Ensure XR Plugin Management is set up if needed.");
@@ -457,9 +456,7 @@ namespace UniCAVE
                 {
                     if(rowInterleaved)
                     {
-                        // Row-interleaved passive stereo for micropolarized displays (CAVE2).
-                        // Left and right eyes render to RenderTextures; a lightweight compositing
-                        // camera blits the interleaved result to the screen.
+                        // Each eye renders to a texture; a compositing camera interleaves them on screen.
                         leftCam = head.CreateEye(HeadConfiguration.Eyes.Left, gameObject.name);
                         rightCam = head.CreateEye(HeadConfiguration.Eyes.Right, gameObject.name);
 
@@ -474,12 +471,8 @@ namespace UniCAVE
                         rightCam.targetTexture.name = gameObject.name + "_RightEyeRT";
                         rightCam.depth = 1;
 
-                        // Create a compositing camera that draws nothing (cullingMask = 0)
-                        // but blits the interleaved stereo result to the screen.
-                        // NOTE: clearFlags MUST NOT be Nothing - URP optimizes away cameras with
-                        // cullingMask=0 AND clearFlags=Nothing before the render graph is built,
-                        // which prevents endCameraRendering from firing. SolidColor forces URP to
-                        // execute a clear pass; our fullscreen blit then overwrites every pixel.
+                        // The compositing camera draws nothing itself. Keep a solid-color clear: URP
+                        // skips a camera with cullingMask 0 and no clear, and the composite never runs.
                         GameObject compObj = new GameObject("Compositing Camera for: " + gameObject.name);
                         compObj.transform.parent = head.transform;
                         compObj.transform.localPosition = Vector3.zero;
@@ -650,9 +643,8 @@ namespace UniCAVE
 
             if(rightCam != null)
             {
-                // Mono moves the eye itself: getAsymProjMatrix only sets the frustum, so skewing it
-                // without moving the camera leaves the view matrix at the right eye and the halves
-                // still differ by d*IPD/depth.
+                // In mono the right eye moves onto the left one; changing only the frustum would
+                // leave the two views apart.
                 rightCam.transform.localPosition = head.GetEyeOffset(head.mono ? HeadConfiguration.Eyes.Left : HeadConfiguration.Eyes.Right);
                 Matrix4x4 rightMat = Util.getAsymProjMatrix(LowerLeft, LowerRight, UpperLeft, rightCam.transform.position, head.nearClippingPlane, head.farClippingPlane);
                 rightCam.projectionMatrix = rightMat;

@@ -7,213 +7,135 @@ using Unity.Netcode;
 namespace UniCAVE
 {
     /// <summary>
-    /// Drives the CAVE root along a fixed, scripted path so a benchmark run is byte-for-byte
-    /// reproducible (same trajectory every time, independent of live head tracking or frame rate).
-    /// Attach to the UniCAVE root (same GameObject as <see cref="UCNetwork"/>): this mutates the root
-    /// <c>transform</c> on the server only, and UCNetwork replicates it to every display node via
-    /// <c>SetTransformsClientRpc</c> — identical to how <see cref="CAVENavigator"/> works.
-    ///
-    /// The run is a sequential list of <see cref="NavSegment"/>s executed at fixed speeds and advanced
-    /// by accumulated distance/angle (not frame count), so the path is wall-clock- and FPS-independent.
-    /// <see cref="RunId"/> and <see cref="Phase"/> expose the server-truth run/segment so a metrics
-    /// logger can tag every CSV sample with the run and phase it belongs to (the logger reads these via
-    /// <see cref="GaussianSplatting"/> benchmark glue, which broadcasts them to all nodes).
-    ///
-    /// Manual navigation (CAVENavigator / GamepadLocomotion / UCNetwork keyboard nav) should be idle
-    /// during an automated run, or the two will fight over the root transform.
-    ///
-    /// Record/replay seam: the public surface (StartRun/StopRun + RunId/Phase/IsRunning) is what the
-    /// benchmark glue and logger depend on, NOT the scripted executor. A future record/replay mode can
-    /// swap the segment-driving body in Update for playback of a captured real head trajectory while
-    /// keeping that surface identical, so no caller changes. // TODO record/replay.
+    /// Moves the CAVE root along a scripted path, so every run follows the same trajectory whatever
+    /// the frame rate. Server-only; UCNetwork replicates the root to the clients, as with CAVENavigator.
+    /// Leave the other navigation scripts idle during a run, or they will fight over the root.
     /// </summary>
     public class AutoNavigator : NetworkBehaviour
     {
-        /// <summary>
-        /// One leg of a scripted path. A segment carries a translation AND a yaw, executed
-        /// SIMULTANEOUSLY under one shared speed profile, so the two accelerate and decelerate
-        /// together and a segment with both traces a curved arc rather than a straight line followed
-        /// by a pivot. Setting one of them to zero gives a pure translation or a pure rotation, and
-        /// setting both to zero gives a hold, so there is no separate segment kind.
-        /// </summary>
+        /// <summary>One leg of a path: a translation and a yaw that run together on one speed profile.</summary>
         [Serializable]
         public class NavSegment
         {
-            [Tooltip("Translation over this segment in the LOCAL frame, in meters. " +
-                     "x = forward, y = right, z = up. The frame rotates with the yaw below, so a " +
-                     "segment with both traces an arc.")]
+            [Tooltip("Translation in meters in the local frame: x forward, y right, z up. The frame " +
+                     "turns with the yaw, so a segment with both traces an arc.")]
             public Vector3 move = Vector3.zero;
 
-            [Tooltip("Yaw over this segment in degrees, signed. Positive turns right.")]
+            [Tooltip("Yaw in degrees. Positive turns right.")]
             public float turnDegrees = 0f;
 
-            [Tooltip("Nominal duration in seconds. Extended automatically if the motion would exceed " +
-                     "Max Move Speed or Max Turn Speed, so the caps can never be broken by authoring.")]
+            [Tooltip("Duration in seconds. Stretched if the motion would exceed Max Move Speed or Max Turn Speed.")]
             public float seconds = 1f;
 
-            [Tooltip("Speed profile across the segment, applied to the translation AND the yaw.")]
+            [Tooltip("Speed profile, applied to both the translation and the yaw.")]
             public NavEase ease = NavEase.Constant;
         }
 
-        /// <summary>
-        /// Speed profile over a segment. Each is a shape function f(s) mapping normalised time to the
-        /// fraction of the motion completed, with f(0)=0 and f(1)=1, so the authored duration is
-        /// respected exactly and the peak speed multiplier is known in closed form.
-        /// </summary>
         public enum NavEase { Constant, EaseIn, EaseOut, EaseInOut }
 
         [Header("Path (executed top to bottom on Start)")]
-        [Tooltip("Only used when Path is Custom. The named presets overwrite this list on StartRun.")]
+        [Tooltip("Only used when Path is Custom. The presets replace this list on StartRun.")]
         public List<NavSegment> segments = new();
 
         [Header("Speed limits")]
-        [Tooltip("Peak translation speed in meters/second. A segment whose authored duration would " +
-                 "exceed this is stretched until it does not.")]
+        [Tooltip("Peak translation speed in meters/second. Longer segments are stretched to stay under it.")]
         public float maxMoveSpeed = 5.0f;
 
-        [Tooltip("Peak yaw rate in degrees/second. A segment whose authored duration would exceed " +
-                 "this is stretched until it does not.")]
+        [Tooltip("Peak yaw rate in degrees/second. Longer segments are stretched to stay under it.")]
         public float maxTurnSpeed = 45.0f;
 
-        [Tooltip("Multiplies every translation distance in the named presets, so one knob fits a path " +
-                 "to a scene. The presets need roughly a 15 to 25 m footprint at 1.0. Use the SAME " +
-                 "value for every scene in a session or the conditions are not comparable.")]
+        [Tooltip("Scales every translation in the presets to fit a scene. The presets need about 15 to " +
+                 "25 m at 1.0. Keep it the same for scenes you want to compare.")]
         public float pathScale = 1.0f;
 
-        [Tooltip("Per-preset starting heading in degrees, indexed by NavPath (0 = Custom, unused). " +
-                 "A path runs the same shape whichever way it faces, so pointing each one down a " +
-                 "clear bearing is what keeps it out of the scene's geometry, and it also gives each " +
-                 "path a different view of the scene. Derived from the model's own free space; see " +
-                 "local/CAVE_Benchmarks.md.")]
+        [Tooltip("Starting heading of each preset in degrees, indexed by NavPath (0 = Custom, unused). " +
+                 "Point each path along a clear direction so it stays out of the scene geometry.")]
         public float[] pathBearingDeg = new float[7];
 
-        [Tooltip("Per-preset multiplier on pathScale, indexed by NavPath. 0 or 1 leaves the path at " +
-                 "the scene's pathScale; below 1 shrinks just that path, for the few that cannot fit " +
-                 "any bearing at full size.")]
+        [Tooltip("Extra scale per preset, indexed by NavPath. 0 or 1 keeps pathScale; below 1 shrinks " +
+                 "only that path.")]
         public float[] pathScaleMul = new float[7];
 
         [Header("Axis convention")]
-        [Tooltip("If forward feels reversed for your rig, flip this. CAVENavigator drives forward as " +
-                 "-transform.forward, so this defaults to true to match it.")]
+        [Tooltip("Flip if forward is reversed on your rig. True matches CAVENavigator, which moves " +
+                 "forward along -transform.forward.")]
         public bool invertForward = true;
 
-        [Tooltip("If left/right feels reversed for your rig, flip this. Defaults true to match CAVENavigator.")]
+        [Tooltip("Flip if left and right are reversed on your rig. True matches CAVENavigator.")]
         public bool invertRight = true;
 
         [Header("Trigger")]
-        [Tooltip("Standalone Y-key trigger for using this navigator WITHOUT GSBenchmarkController. " +
-                 "Leave OFF when GSBenchmarkController is present (it owns Y for both keyboard and " +
-                 "gamepad); otherwise a single Y press starts the run twice and double-counts RunId.")]
+        [Tooltip("Start a run with the Y key. Leave it off if another script already starts runs on " +
+                 "Y, or one press starts two runs.")]
         public bool allowKeyboardTrigger = false;
 
         [Tooltip("Auto-start one run when the scene begins (server only).")]
         public bool runOnStart = false;
 
-        /// <summary>
-        /// The scripted paths of the temporal evaluation. Pure head rotation and pure head translation
-        /// are absent on purpose: the head is fixed at the CAVE centre for the evaluation build, so
-        /// every path here is navigation-driven.
-        /// </summary>
+        /// <summary>Path presets. They all move the root; none of them moves the head.</summary>
         public enum NavPath
         {
             Custom, ConstantTranslation, AccelDecel, Reversal180, ChunkOscillation, DepthComplexity,
-            // The performance-session path. Appended, not inserted, so serialized values stay stable.
-            ReferenceCircuit
+            ReferenceCircuit   // added last so serialized values stay stable
         }
 
         [Header("Path preset")]
-        [Tooltip("Custom keeps the segment list below. Anything else overwrites it on StartRun, so a " +
-                 "condition can be re-run identically from a name instead of hand-edited waypoints.")]
+        [Tooltip("Custom runs the segment list. Any other preset replaces the list on StartRun, so a " +
+                 "run can be repeated by name.")]
         public NavPath path = NavPath.Custom;
 
-        [Header("Replay (deterministic capture runs)")]
-        [Tooltip("Advance the path by a FIXED step per rendered frame instead of by the wall clock. " +
-                 "Capture stalls then cannot change the path, so a slow capture run reproduces exactly " +
-                 "the frames a real run at 1/replayDeltaTime fps would show. The pipeline's decisions " +
-                 "are frame-parameterised (sort gate on per-frame deltas, frame-counted eviction " +
-                 "delay, per-frame upload budget), so they fire identically. Never report frame times " +
-                 "from a replay run.")]
+        [Header("Replay")]
+        [Tooltip("Advance the path by a fixed step per rendered frame instead of by the clock. A slow " +
+                 "run then shows the same frames as a real-time run at 1/replayDeltaTime fps. Frame " +
+                 "times measured in this mode are not real.")]
         public bool replayMode = false;
 
         [Tooltip("Replay step in seconds per frame. 0.016667 = a 60 fps run.")]
         public float replayDeltaTime = 1f / 60f;
 
-        // --- Server-truth run state, read by the benchmark glue and broadcast to all nodes. ---
         /// <summary>Increments on every StartRun(); 0 before the first run.</summary>
         public int RunId { get; private set; }
-        /// <summary>The preset the current (or last) run used. Broadcast and logged so a folder of runs can be split by path.</summary>
+        /// <summary>Preset of the current or last run.</summary>
         public NavPath CurrentPath => path;
         /// <summary>Current segment index while running, or -1 when idle.</summary>
         public int Phase { get; private set; } = -1;
         public bool IsRunning { get; private set; }
 
-        /// <summary>Replay steps applied so far in this run. Only meaningful while replayMode is on.</summary>
+        /// <summary>Replay steps taken in this run. Only meaningful in replay mode.</summary>
         public int ReplayStep { get; private set; }
 
         /// <summary>
-        /// Step id of the pose the CAVE root currently holds. Written here on the server and by
-        /// <see cref="UCNetwork"/> on every client from the same message that carries the pose, so a
-        /// capture node can tell which step it is looking at and never captures one step twice.
+        /// Replay step of the pose the root holds now. Set here on the server, and by UCNetwork on the
+        /// clients from the same message as the pose, so step and pose always match.
         /// </summary>
         public static int LastReplayStep;
 
-        /// <summary>True while a replay run is in flight on the server, so the pose broadcast can skip
-        /// the frames where the barrier is holding the path still.</summary>
+        /// <summary>True while a replay run is in progress on the server.</summary>
         public static bool ReplayActive;
 
         /// <summary>
-        /// Pace control for replay runs. Fixed-step replay only reproduces a real run when the process
-        /// advancing the path is the one stalling for the capture, which on a cluster it is not: this
-        /// runs on the head and the captures happen on the display nodes. The benchmark glue installs a
-        /// gate here that stays false until every capturing node has written the frame for the step
-        /// being asked about. Null means advance freely.
+        /// Optional gate for replay runs: step n is taken only when it returns true, so another script
+        /// can hold the path, for example until every node has finished its frame. Null means no gate.
         /// </summary>
         public static Func<int, bool> ReplayGate;
 
-        // Execution cursor for the active segment. Progress is tracked in TIME, and the shape function
-        // converts elapsed time into the fraction of the motion completed, so translation and yaw stay
-        // locked to one profile and the authored duration is exact.
         private int segmentIndex = -1;
         private float segmentElapsed;    // seconds into the current segment
-        private float segmentDuration;   // its duration after the speed caps have been applied
-        private float segmentFraction;   // fraction of the motion already applied, f(elapsed/duration)
+        private float segmentDuration;   // its duration after the speed caps
+        private float segmentFraction;   // fraction of the motion already applied
 
-        // Pose the scene was authored at. Every run restarts from here, so a run cannot inherit
-        // wherever the previous one finished or whatever nudged the root in between.
+        // Pose the scene starts at. Every run restarts from here.
         private Vector3 homePosition;
         private Quaternion homeRotation;
         private bool homeCaptured;
 
         void Start()
         {
-            ApplyReplayOverride();
+            if (replayMode)
+                Debug.LogWarning("[AutoNavigator] Replay mode is on: the path advances a fixed step per " +
+                                 "rendered frame, so frame times from this run are not real.");
             CaptureHome();
             if (runOnStart && IsServer) StartRun();
-        }
-
-        /// <summary>
-        /// -gs-replay turns replay mode on at launch, so session D needs no separate build. The
-        /// serialized value stays the default, which means a build is safe for timing unless the flag
-        /// is passed. Replay makes the path advance a fixed step per rendered frame instead of by the
-        /// clock, so it is announced loudly: a timing run started with it on produces frame times that
-        /// look ordinary and mean nothing.
-        /// </summary>
-        private void ApplyReplayOverride()
-        {
-            bool flag = false;
-            try
-            {
-                foreach (string a in System.Environment.GetCommandLineArgs())
-                    if (string.Equals(a, "-gs-replay", System.StringComparison.OrdinalIgnoreCase))
-                    { flag = true; break; }
-            }
-            catch { }
-
-            if (flag) replayMode = true;
-            if (replayMode)
-                Debug.LogWarning("[AutoNavigator] REPLAY MODE IS ON. The path advances a fixed step " +
-                                 "per rendered frame, so frame times from this run are meaningless. " +
-                                 "Use it for session D only.");
         }
 
         private void CaptureHome()
@@ -224,7 +146,7 @@ namespace UniCAVE
             homeCaptured = true;
         }
 
-        /// <summary>Return the root to the pose the scene started at. Server-only, like the run itself.</summary>
+        /// <summary>Moves the root back to the start pose. Server-only.</summary>
         public void ResetToHome()
         {
             if (!IsServer) return;
@@ -270,18 +192,8 @@ namespace UniCAVE
             float df = f - segmentFraction;      // fraction of the segment to apply this frame
             segmentFraction = f;
 
-            // Half the rotation, then the translation along the rotated local axes, then the other
-            // half. Both are scaled by the SAME df, which is what makes the linear and angular motion
-            // accelerate together and turns a segment carrying both into an arc.
-            //
-            // The half-and-half split is a midpoint step, and it is load-bearing rather than tidy. A
-            // frame applies a straight chord in place of an arc, so rotating fully before translating
-            // biases every curved frame the same way and the bias scales with the frame time: the path
-            // then DEPENDS ON FRAME RATE, and two conditions running at different speeds would not
-            // trace the same trajectory, which is exactly the comparison a performance session makes.
-            // Measured on the reference circuit: rotate-then-translate drifts 157 mm between a 60 fps
-            // and a 13 fps run and closes to 43 mm; the midpoint form drifts 0.5 mm and closes to
-            // 0.3 mm.
+            // Midpoint step: half the yaw, the translation, then the other half. Turning fully before
+            // moving bends every curved frame the same way, so the path would depend on frame rate.
             float halfTurn = seg.turnDegrees * df * 0.5f;
             if (halfTurn != 0f) transform.Rotate(Vector3.up, halfTurn, Space.World);
 
@@ -300,13 +212,7 @@ namespace UniCAVE
             if (s >= 1f) AdvanceSegment();
         }
 
-        /// <summary>
-        /// Fraction of a segment's motion completed at normalised time s, with f(0)=0 and f(1)=1.
-        /// Because the shape reaches exactly 1 at s=1, the authored duration is respected exactly,
-        /// unlike a speed multiplier which has to be clamped away from zero and then overruns.
-        /// Peak speed multipliers, used by <see cref="SegmentDuration"/> to enforce the caps:
-        /// Constant 1, EaseIn 2, EaseOut 2, EaseInOut 1.5 (smoothstep).
-        /// </summary>
+        /// <summary>Fraction of the motion done at normalised time s. f(0) = 0 and f(1) = 1, so the duration is exact.</summary>
         private static float Shape(NavEase ease, float s)
         {
             s = Mathf.Clamp01(s);
@@ -319,6 +225,7 @@ namespace UniCAVE
             }
         }
 
+        // Peak speed of each profile relative to its average speed (the maximum slope of Shape).
         private static float PeakFactor(NavEase ease) => ease switch
         {
             NavEase.EaseIn => 2f,
@@ -327,11 +234,7 @@ namespace UniCAVE
             _ => 1f,
         };
 
-        /// <summary>
-        /// A segment's real duration: the authored value, stretched if the motion would otherwise
-        /// exceed a speed cap. Stretching rather than clipping keeps the geometry of the path exactly
-        /// as authored, so a path stays reproducible and closed whatever the caps are set to.
-        /// </summary>
+        /// <summary>Authored duration, stretched if the motion would exceed a speed cap. Stretching keeps the path's shape.</summary>
         private float SegmentDuration(NavSegment seg)
         {
             float peak = PeakFactor(seg.ease);
@@ -340,10 +243,7 @@ namespace UniCAVE
             return Mathf.Max(Mathf.Max(seg.seconds, linear), Mathf.Max(angular, 1e-4f));
         }
 
-        /// <summary>
-        /// Replace the segment list with a named path. Server-only, and only the server executes the
-        /// path (clients follow the broadcast transform), so no RPC is needed to keep nodes in step.
-        /// </summary>
+        /// <summary>Replaces the segment list with a preset. Only the server runs the path; clients follow the root.</summary>
         public void ApplyPath(NavPath p)
         {
             if (p == NavPath.Custom) return;
@@ -351,15 +251,12 @@ namespace UniCAVE
             switch (p)
             {
                 case NavPath.ConstantTranslation:
-                    // The CONTROL. Deliberately the one trivial path: constant velocity, one axis, no
-                    // rotation, no acceleration. Every other path varies several things at once, so
-                    // something has to hold them all still.
+                    // The baseline: constant speed along one axis, no rotation.
                     s.Add(Seg(fwd: 24f, sec: 12f));
                     break;
 
                 case NavPath.AccelDecel:
-                    // Linear AND angular acceleration together. Every translation axis is used in both
-                    // directions and both turn directions appear, so no axis is left untested.
+                    // Linear and angular acceleration together, on every axis in both directions.
                     s.Add(Seg(fwd: 8f, right: 3f, up: 1.2f, turn: +45f, sec: 4f, ease: NavEase.EaseIn));
                     s.Add(Seg(fwd: 8f, right: -3f, up: -1.2f, turn: -45f, sec: 4f, ease: NavEase.EaseOut));
                     s.Add(Seg(fwd: -8f, right: -3f, up: 1.2f, turn: -60f, sec: 4f, ease: NavEase.EaseIn));
@@ -367,9 +264,7 @@ namespace UniCAVE
                     break;
 
                 case NavPath.Reversal180:
-                    // The order is maximally stale right after the turn. The reversal runs at the
-                    // angular cap and carries a lateral and vertical shift, so it is a real change of
-                    // viewpoint rather than a pivot in place.
+                    // Two half turns at the yaw cap, each with a sideways and vertical shift.
                     s.Add(Seg(fwd: 14f, sec: 7f));
                     s.Add(Seg(right: 4f, up: 1f, turn: +180f, sec: 6f, ease: NavEase.EaseInOut));
                     s.Add(Seg(fwd: 14f, sec: 7f));
@@ -377,12 +272,8 @@ namespace UniCAVE
                     break;
 
                 case NavPath.ChunkOscillation:
-                    // Cross residency boundaries repeatedly. The amplitude VARIES per cycle so a
-                    // different boundary is crossed each time rather than the same one four times, and
-                    // each return carries a yaw plus a lateral and vertical offset so the frustum union
-                    // changes SHAPE and not only position. The offsets alternate sign, so over the four
-                    // cycles the net lateral and vertical displacement is zero and the path cannot
-                    // wander out of the scene.
+                    // Back and forth with a different amplitude each cycle, so content keeps entering and
+                    // leaving the view. The return offsets alternate sign and cancel over four cycles.
                     for (int i = 0; i < 4; i++)
                     {
                         float amp = new[] { 10f, 14f, 8f, 12f }[i];
@@ -395,9 +286,7 @@ namespace UniCAVE
                     break;
 
                 case NavPath.DepthComplexity:
-                    // Drive into the densest region, then work it: a pure lateral strafe, a pure yaw
-                    // sweep and a true hold, all where per-pixel overlap peaks. The pure yaw at maximum
-                    // depth complexity is the worst case for the shared sort order.
+                    // Drive into the densest part of the scene, then strafe, turn and hold there.
                     s.Add(Seg(fwd: 10f, up: 1f, turn: +25f, sec: 4.5f, ease: NavEase.EaseIn));
                     s.Add(Seg(right: 6f, sec: 4f));
                     s.Add(Seg(turn: +120f, sec: 4f));
@@ -407,18 +296,8 @@ namespace UniCAVE
                     break;
 
                 case NavPath.ReferenceCircuit:
-                    // The performance-session path. Properties that earn it a slot of its own:
-                    // (1) It CLOSES exactly, so every condition starts and ends at the same pose and
-                    //     none is biased by where in the scene it happened to stop. The turns sum to
-                    //     360 so the heading closes; the final leg below closes the position.
-                    // (2) It keeps PURE translation and PURE rotation segments alongside the combined
-                    //     arcs, and the segment index goes into every log row, so the two can be
-                    //     separated offline. That is what makes the distance sort key's rotation
-                    //     behaviour measurable without designing a separate experiment.
-                    // (3) The holds at each end give a static steady-state baseline inside the same
-                    //     logging block.
-                    // Turn angles are all different and go both ways on purpose: a circuit of identical
-                    // 90 degree turns measures one turn four times.
+                    // A closed loop: the turns sum to 360 degrees and the last leg closes the position.
+                    // Pure translations and rotations sit between the arcs, with a hold at each end.
                     s.Add(Seg(sec: 5f));                                                     // settle
                     s.Add(Seg(fwd: 8f, sec: 4f));                                            // pure translation
                     s.Add(Seg(turn: +75f, sec: 3f, ease: NavEase.EaseInOut));                // pure rotation
@@ -436,11 +315,7 @@ namespace UniCAVE
             if (s.Count > 0) segments = s;
         }
 
-        /// <summary>
-        /// Select a path preset and begin a run from its first segment. Server-only. This is what the
-        /// number keys on the benchmark controller call, so a condition is re-run from a NAME rather
-        /// than from whatever the inspector happened to hold, and the chosen preset is logged.
-        /// </summary>
+        /// <summary>Selects a preset and starts a run. Server-only.</summary>
         public void StartRun(NavPath p)
         {
             if (!IsServer) return;
@@ -453,8 +328,6 @@ namespace UniCAVE
         {
             if (!IsServer) return;
             CaptureHome();
-            // Every run starts from the same pose and the preset's own heading, so a path is
-            // reproducible no matter what happened before it.
             transform.SetPositionAndRotation(homePosition, homeRotation * Quaternion.Euler(0f, Bearing(path), 0f));
             ApplyPath(path);
             if (segments == null || segments.Count == 0)
@@ -494,14 +367,6 @@ namespace UniCAVE
             segmentDuration = SegmentDuration(segments[segmentIndex]);
         }
 
-        /// <summary>
-        /// Builds a segment. Distances scale with <see cref="pathScale"/>, and so does the duration of
-        /// a segment that translates without turning, which keeps linear speed identical at any scale.
-        /// Yaw, pure rotations and holds never scale, so turn rates and hold times are also identical.
-        /// Speed has to be preserved across scenes because the sort gate thresholds per-frame position
-        /// and rotation deltas: a smaller scene run at a lower speed would fire fewer sorts and look
-        /// cheaper for a reason that is the path rather than the content.
-        /// </summary>
         private float Bearing(NavPath p)
         {
             int i = (int)p;
@@ -517,6 +382,10 @@ namespace UniCAVE
             return Mathf.Max(0.01f, pathScale) * mul;
         }
 
+        /// <summary>
+        /// Builds a preset segment. Distances scale with the path scale, and so does the duration of a
+        /// pure translation, so speed does not change with scale. Turns and holds never scale.
+        /// </summary>
         private NavSegment Seg(float fwd = 0f, float right = 0f, float up = 0f,
                                float turn = 0f, float sec = 1f, NavEase ease = NavEase.Constant)
         {
@@ -531,11 +400,7 @@ namespace UniCAVE
             };
         }
 
-        /// <summary>
-        /// The leg that returns the path to its start, solved from the segments already in the list
-        /// under the CURRENT invert flags and scale. Computed rather than baked: a constant solved
-        /// offline silently misses by tens of meters if the flags stop matching or a leg is edited.
-        /// </summary>
+        /// <summary>Leg that brings the path back to its start, solved with the current invert flags and scale.</summary>
         private NavSegment ClosingLeg(List<NavSegment> core, float sec, NavEase ease)
         {
             float fSign = invertForward ? -1f : 1f;

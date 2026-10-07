@@ -1,17 +1,24 @@
 <#
 .SYNOPSIS
-    Launches one UniCAVE-GS instance per GPU on the current node, or a single
-    headless instance on the master.
+    Launches one player instance per GPU on the current node, or a single
+    instance on the master.
 
-    Script auto-detects its build folder from $PSScriptRoot, so it finds the
-    exe and config next to itself regardless of deploy path.
+    The script finds the exe and nodes.json next to itself, so it works from
+    any deploy path. If nodes.json leaves ExeName empty, the only player exe in
+    the folder is used. TrackerHost in nodes.json replaces TRACKER_HOST in the
+    VRPN addresses of the prefabs (passed as the trackerHost argument).
 
     UniCAVE custom args: no dash prefix (Util.GetArg parses raw).
     Unity built-in args:  dash prefix.
+
+.PARAMETER ExtraArgs
+    Extra command-line arguments for every instance, as one string,
+    for example -ExtraArgs "-logStats -myFlag 3".
 #>
 [CmdletBinding()]
 param(
-    [string]$ConfigFile
+    [string]$ConfigFile,
+    [string]$ExtraArgs = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -27,16 +34,24 @@ $cfg = Get-Content $ConfigFile -Raw | ConvertFrom-Json
 $me       = $env:COMPUTERNAME
 $isMaster = ($me -eq $cfg.Master.Host)
 
+# The player exe in a build folder, ignoring Unity's crash handler.
+function Find-PlayerExe([string]$dir) {
+    $exes = @(Get-ChildItem -Path $dir -Filter '*.exe' -File |
+        Where-Object { $_.Name -notlike 'UnityCrashHandler*' })
+    if ($exes.Count -ne 1) { throw "expected one player exe in $dir, found $($exes.Count); set ExeName in nodes.json" }
+    return $exes[0].FullName
+}
+
 $buildDir = $scriptDir
-$exe      = Join-Path $buildDir $cfg.ExeName
+$exe      = if ($cfg.ExeName) { Join-Path $buildDir $cfg.ExeName } else { Find-PlayerExe $buildDir }
 $logDir   = Join-Path $buildDir 'Logs'
+$extra    = @($ExtraArgs -split '\s+' | Where-Object { $_ })
 
 if (-not (Test-Path $exe))    { throw "exe not found: $exe - sync the build first." }
 if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Path $logDir -Force | Out-Null }
 
-# Resolve display-number by coordinate: pick the top panel of the target column
-# (smallest Y at the column's X). Picking any display on the target column also pins Unity's 
-# D3D device to that GPU so compute and swapchain presentation stay aligned.
+# Monitor number of the top panel of a column (smallest Y at the column's X). A display on the
+# GPU's own column also pins Unity's D3D device to that GPU, so rendering and presentation match.
 function Get-TopMonitorOnColumn([int]$columnX) {
     $top = [System.Windows.Forms.Screen]::AllScreens |
         Where-Object { $_.Bounds.X -eq $columnX } |
@@ -69,8 +84,8 @@ function Get-MonitorForGpu([string]$node, [int]$gpu) {
 }
 
 # Move a launched instance's main window to the top-left corner (0,0) at the given size.
-# Unity's -popupwindow opens the window centered and provides no -screen-x/-y arg, so we
-# reposition it with a Win32 MoveWindow once its window handle exists (poll up to ~10s).
+# Unity's -popupwindow opens the window centered and has no -screen-x/-y arg, so the window
+# is moved with Win32 MoveWindow once its handle exists (polling for up to 10 s).
 function Move-WindowTopLeft([int]$procId, [int]$w, [int]$h) {
     if (-not ('UniCaveNative.Win' -as [type])) {
         Add-Type -Namespace 'UniCaveNative' -Name 'Win' -MemberDefinition @'
@@ -98,16 +113,16 @@ function Start-Instance([string]$virtualName, [int]$gpu = -1, [switch]$Batch, [s
         'overrideMachineName', $virtualName,
         'serverAddress',       $cfg.ServerAddress,
         'serverPort',          $cfg.ServerPort,
-        '-logFile',            $logFile,
-        '-gs-viewdata'
+        '-logFile',            $logFile
     )
+    if ($cfg.TrackerHost) { $argList += @('trackerHost', $cfg.TrackerHost) }
+    $argList += $extra
     $monitor = -1
     $winW = 0
     $winH = 0
     if ($MasterWindow) {
-        # Left third of the master's primary screen: a full-height column so the perf
-        # overlay (now with many fields) has the vertical room to lay out without the
-        # lines overlapping. Repositioned to (0,0) after launch (see Move-WindowTopLeft).
+        # Left third of the master's primary screen, full height, so a tall on-screen
+        # readout fits. Moved to (0,0) after launch (see Move-WindowTopLeft).
         $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
         $winW = [int]($bounds.Width / 3)
         $winH = $bounds.Height
