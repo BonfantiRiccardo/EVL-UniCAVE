@@ -133,7 +133,8 @@ own.
    navigation, no pose broadcast, and no input on any node.
 
 5. **Drag the rig prefab into the scene root.** Do not parent it under
-   anything else: `CAVENavigator` moves the prefab root to navigate, and
+   anything else: navigation moves the prefab root (`CAVENavigator` on
+   ARCADE2, `WandLocomotion` and `GamepadLocomotion` on CAVE2), and
    a non-identity parent transform corrupts the physical-to-world
    mapping the asymmetric projection assumes.
 
@@ -217,10 +218,20 @@ Continue from part 1 with `Prefabs/CAVE2.prefab`.
    On another rig you can also type the full address in place of the
    placeholder.
 
+   The wand pose address names one Vicon rigid body, and the primary
+   CAVE2 wand changes over time (`Wand_Batman` or `Wand_Robin`). The
+   shipped prefab moves along the facing of the `Head`, so nothing reads
+   the wand pose, and the stick and buttons work with either wand because
+   `Navigation` reports all of them on the same channels. If you point
+   `WandLocomotion.wand` at the `Wand` object to move where you point,
+   first check in Vicon Tracker which wand is the primary one and set the
+   `Wand` object's `VRPNTrack` address to match.
+
 5. **Add scene content** as siblings of `Head` and the displays or at
    hierarchy root, inside the CAVE2 prefab. Anything inside the prefab
-   moves with `CAVENavigator` at runtime; anything outside the prefab
-   root stays in fixed world space.
+   moves with the root, which `WandLocomotion`, `GamepadLocomotion` and
+   the keyboard navigation in `UCNetwork` move at runtime; anything
+   outside the prefab root stays in fixed world space.
 
 6. **Build for Windows Standalone**, then deploy per the cluster
    deployment section below.
@@ -305,9 +316,28 @@ Pressing it on a client does nothing.
 | `F5` | Toggle stereo/mono. In mono the right eye renders from the left eye's position, so both halves of the signal match |
 | `Esc` | Quit every instance |
 
-The gamepad is read by `GamepadLocomotion` and the CAVE2 wand by
-`WandLocomotion`. The CAVE2 prefab enables only `WandLocomotion`: with
-both on, wand movement comes out inverted.
+The CAVE2 wand is read by `WandLocomotion` and a gamepad by
+`GamepadLocomotion`. The CAVE2 prefab enables both: the wand is the
+main input, and the gamepad is its backup for when the wand does not
+work. Like the keyboard, the gamepad must be connected
+to the head machine (CAVE2MASTER on CAVE2), and it keeps working when
+the head window loses focus only with Background Behavior = Ignore
+Focus (see ARCADE2 step 6). Both components map the same actions, and
+both move along the facing of the `Head`:
+
+| Action | Wand | Gamepad |
+|---|---|---|
+| Move | stick | left stick |
+| Turn in place | arrow left/right | right stick X |
+| Fly up/down | arrow up/down | right/left trigger |
+| Sprint (hold) | L2 | left shoulder |
+| Reset to the start pose | O | right shoulder |
+
+The gamepad's face buttons and D-pad are left free for the application.
+An earlier build showed inverted wand movement while both components
+were on, and the cause was never found. If it returns, disable
+`GamepadLocomotion` and look for the `[GamepadLocomotion] reading
+gamepad` line in the head's player log, which names the device it read.
 
 ## Building a rig of your own
 

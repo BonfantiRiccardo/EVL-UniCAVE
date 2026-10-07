@@ -5,9 +5,9 @@ using Unity.Netcode;
 namespace UniCAVE
 {
     /// <summary>
-    /// Moves the CAVE root with a standard gamepad read through the Input System: the left stick moves,
-    /// the right stick turns, the triggers fly up and down. Server-only; UCNetwork replicates the root.
-    /// Keep it off in scenes driven by the CAVE2 wand: with both on, wand movement comes out inverted.
+    /// Moves the CAVE root with a standard gamepad read through the Input System, as a backup for the CAVE2
+    /// wand: the left stick moves, the right stick turns, the triggers fly up and down, the left shoulder
+    /// sprints and the right shoulder resets. Server-only; UCNetwork replicates the root.
     /// </summary>
     public class GamepadLocomotion : NetworkBehaviour
     {
@@ -43,6 +43,22 @@ namespace UniCAVE
         [Tooltip("Vertical speed in meters/second. Right trigger raises, left trigger lowers.")]
         public float verticalSpeed = 1f;
 
+        [Header("Sprint / Reset (shoulders)")]
+        [Tooltip("Speed multiplier for moving and flying while the left shoulder is held.")]
+        public float sprintMultiplier = 1.5f;
+
+        // Captured at Start so the reset button has somewhere to return to.
+        private Vector3 startPosition;
+        private Quaternion startRotation;
+
+        private Gamepad loggedPad; // last device announced in the log
+
+        void Start()
+        {
+            startPosition = transform.position;
+            startRotation = transform.rotation;
+        }
+
         void Update()
         {
             if(!IsServer) return;
@@ -51,7 +67,20 @@ namespace UniCAVE
             Gamepad gp = Gamepad.current;
             if(gp == null) return;
 
+            if(gp != loggedPad)
+            {
+                loggedPad = gp;
+                Debug.Log($"[GamepadLocomotion] reading gamepad '{gp.displayName}' (layout {gp.layout})");
+            }
+
+            if(gp.rightShoulder.wasPressedThisFrame)
+            {
+                transform.SetPositionAndRotation(startPosition, startRotation);
+                return;
+            }
+
             float dt = Time.deltaTime;
+            float speedMul = gp.leftShoulder.isPressed ? sprintMultiplier : 1f;
 
             // Left stick moves relative to directionSource.
             Vector2 stick = gp.leftStick.ReadValue();
@@ -90,7 +119,7 @@ namespace UniCAVE
                 }
 
                 if(validBasis)
-                    transform.position += dt * moveSpeed * (right * move.x + fwd * move.y);
+                    transform.position += dt * moveSpeed * speedMul * (right * move.x + fwd * move.y);
             }
 
             // Right stick X turns around the viewer.
@@ -105,7 +134,7 @@ namespace UniCAVE
             float vertical = gp.rightTrigger.ReadValue() - gp.leftTrigger.ReadValue();
             if(Mathf.Abs(vertical) > 0.01f)
             {
-                transform.position += Vector3.up * (vertical * verticalSpeed * dt);
+                transform.position += Vector3.up * (vertical * verticalSpeed * speedMul * dt);
             }
         }
     }
