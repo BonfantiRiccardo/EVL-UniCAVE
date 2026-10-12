@@ -1,7 +1,7 @@
 {
-  "name": "com.bonfanti.myunicave",
+  "name": "com.bonfanti.evl-unicave",
   "version": "3.0.0",
-  "displayName": "MyUniCAVE",
+  "displayName": "EVL-UniCAVE",
   "description": "Fork of UniCAVE 2.0.1 (UW Madison Living Environments Lab) ported to Unity 6 with Netcode for GameObjects and URP. Adds row-interleaved passive stereo for CAVE2 Planar panels, multi-instance window repositioning for cluster nodes with multiple GPUs per host, and a CAVE2 cluster prefab plus PowerShell launcher templates.",
   "unity": "6000.3",
   "unityRelease": "11f1",

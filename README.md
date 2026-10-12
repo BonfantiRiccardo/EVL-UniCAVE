@@ -1,4 +1,4 @@
-# MyUniCAVE
+# EVL-UniCAVE
 
 Fork of [UniCAVE](https://github.com/livingenvironmentslab/UniCAVE) 2.0.1
 (UW Madison Living Environments Lab) ported to Unity 6 with Netcode for
@@ -36,7 +36,7 @@ ARCADE2 rigs.
 
 URP is already present in the Universal 3D template. Netcode for
 GameObjects and Input System are not; install them before importing the
-package, otherwise `MyUniCAVE` scripts will fail to compile and Unity
+package, otherwise `EVL-UniCAVE` scripts will fail to compile and Unity
 will mark the imported assets as broken.
 
 ## Installation
@@ -52,7 +52,7 @@ Do this **first**, before adding the package itself.
    * **Input System** (Unity will prompt to enable the new input
      backend and restart the editor; accept it).
 
-### Step 2: add the MyUniCAVE package
+### Step 2: add the EVL-UniCAVE package
 
 Pick one of the two methods.
 
@@ -63,14 +63,14 @@ who plan to extend the fork.
 
 ```powershell
 cd <YourProject>\Assets
-git clone https://github.com/BonfantiRiccardo/MyUniCAVE.git
+git clone https://github.com/BonfantiRiccardo/EVL-UniCAVE.git MyUniCAVE
 ```
 
 #### Option B: import the prebuilt `.unitypackage`
 
 Pre-versioned snapshot, read-only inside the consumer project.
 
-1. Download `Package~/MyUniCAVE.unitypackage` from this repository.
+1. Download `Package~/EVL-UniCAVE.unitypackage` from this repository.
 2. In the consumer Unity Editor: **Assets > Import Package > Custom
    Package...**, pick the file, leave every entry checked, click
    **Import**. Files land at `Assets/MyUniCAVE/` with paths and GUIDs
