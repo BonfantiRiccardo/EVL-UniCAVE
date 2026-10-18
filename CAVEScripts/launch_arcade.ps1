@@ -19,10 +19,18 @@
 .PARAMETER ExtraArgs
     Extra command-line arguments for both instances, as one string,
     for example -ExtraArgs "-logStats -myFlag 3".
+
+.PARAMETER Sync
+    Lock both screens to the same frame: passes "frameLock 1 swapBarrier 1"
+    (pose lockstep plus the NVIDIA present barrier, VSync on) and
+    "frameLockTargetMs $syncTargetMs" (the pairing these screens need). Needs the
+    framelocked Sync board; frame rate is capped at the display refresh, so
+    never use it for timing runs. Single flags go through -ExtraArgs.
 #>
 [CmdletBinding()]
 param(
-    [string]$ExtraArgs = ''
+    [string]$ExtraArgs = '',
+    [switch]$Sync
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,18 +51,19 @@ Add-Type -AssemblyName System.Windows.Forms
 #             screen lights up crisp.)
 #   targetX : the desktop X of that instance's screen. It MUST match the
 #             display's baked windowBounds.x in ARCADE2.prefab:
-#               GALAGA1   -> 6720  (right screen, \\.\DISPLAY5)
-#               GALAGA1-B -> 0     (left  screen, \\.\DISPLAY1, primary)
+#               GALAGA1   -> 0     (left  screen, \\.\DISPLAY1, primary)
+#               GALAGA1-B -> 6720  (right screen, \\.\DISPLAY5)
 #             The -monitor index and screen size are auto-resolved from targetX.
 # ---------------------------------------------------------------------------
 $serverAddress = '127.0.0.1'
 $serverPort    = 6543
 $exeName       = ''   # empty: the only player exe next to this script
 $staggerMs     = 2000
+$syncTargetMs  = '-8.5'   # -Sync: ms after the left GPU that the right GPU shows each pose (negative = before)
 
 $instances = @(
-    @{ name = 'GALAGA1';   gpu = 1; targetX = 6720 },   # head / server / right screen
-    @{ name = 'GALAGA1-B'; gpu = 0; targetX = 0    }    # client        / left  screen
+    @{ name = 'GALAGA1';   gpu = 0; targetX = 0    },   # head / server / left  screen
+    @{ name = 'GALAGA1-B'; gpu = 1; targetX = 6720 }    # client        / right screen
 )
 
 # ---------------------------------------------------------------------------
@@ -163,12 +172,15 @@ function Start-ArcadeInstance($inst) {
         '-screen-width',       $screen.w,
         '-screen-height',      $screen.h
     )
+    if ($Sync) { $argList += @('frameLock', '1', 'swapBarrier', '1', 'frameLockTargetMs', $syncTargetMs) }
     $argList += $extra
 
     $p = Start-Process -FilePath $exe -ArgumentList $argList -PassThru
     Write-Host "[ARCADE] $($inst.name) pid=$($p.Id) gpu=$($inst.gpu) monitor=$($screen.monitor) size=$($screen.w)x$($screen.h) log=$logFile"
     return $p
 }
+
+if ($Sync) { Write-Host "[ARCADE] sync on: frameLock 1 swapBarrier 1 frameLockTargetMs $syncTargetMs (VSync, capped at the refresh rate)" }
 
 $procs = @()
 foreach ($inst in $instances) {

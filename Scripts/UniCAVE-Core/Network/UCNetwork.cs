@@ -64,14 +64,14 @@ namespace UniCAVE
         /// Sequence number and server send time of the last pose this node applied. Nodes that applied
         /// the same broadcast report the same pair, so per-node logs can be matched frame by frame.
         /// </summary>
-        public static uint LastPoseSeq { get; private set; }
+        public static uint LastPoseSeq { get; internal set; }
 
-        public static float LastPoseTime { get; private set; }
+        public static float LastPoseTime { get; internal set; }
 
         /// <summary>Head position this node last applied.</summary>
-        public static Vector3 LastHeadPos { get; private set; }
+        public static Vector3 LastHeadPos { get; internal set; }
 
-        public static Vector3 LastRootPos { get; private set; }
+        public static Vector3 LastRootPos { get; internal set; }
 
         /// <summary>True on a display node while the head has hidden the overlays (F1). Set on the head only if it has a local display.</summary>
         public static bool DisplayOverlaysHidden { get; private set; }
@@ -231,6 +231,8 @@ namespace UniCAVE
         [ClientRpc]
         void SetTransformsClientRpc(Vector3 myPos, Quaternion myOri, Vector3 headPos, Quaternion headOri, uint seq, float sendTime, int replayStep)
         {
+            if(FrameLock.ClientLocked) return;
+
             transform.SetPositionAndRotation(myPos, myOri);
 
             if(head != null)
