@@ -84,6 +84,8 @@ namespace UniCAVE
         public bool rowInterleaved;
         [Tooltip("Swap which eye gets even vs odd rows (depends on panel polarizer orientation)")]
         public bool rowInterleaveSwapEyes;
+        [Tooltip("Render each eye at half the window height: each eye only shows every second row")]
+        public bool rowInterleaveHalfHeight;
         [Tooltip("Where the window will be positioned on the screen")]
         public RectInt windowBounds;
         public RectInt leftViewport;
@@ -92,6 +94,7 @@ namespace UniCAVE
         public bool loadSettingsAtRuntime;
 
         private bool updatedViewports = false;
+        private int interleaveRows;   // window rows of a row-interleaved display, set when its eye textures are made
 
         /// <summary>
         /// Set normalized viewport rects for dual-pipe side-by-side stereo.
@@ -462,14 +465,23 @@ namespace UniCAVE
 
                         int rtW = windowBounds.width  > 0 ? windowBounds.width  : Screen.width;
                         int rtH = windowBounds.height > 0 ? windowBounds.height : Screen.height;
+                        int eyeH = rowInterleaveHalfHeight ? (rtH + 1) / 2 : rtH;
+                        interleaveRows = rtH;
 
-                        leftCam.targetTexture = new RenderTexture(rtW, rtH, 24);
+                        leftCam.targetTexture = new RenderTexture(rtW, eyeH, 24);
                         leftCam.targetTexture.name = gameObject.name + "_LeftEyeRT";
                         leftCam.depth = 0;
 
-                        rightCam.targetTexture = new RenderTexture(rtW, rtH, 24);
+                        rightCam.targetTexture = new RenderTexture(rtW, eyeH, 24);
                         rightCam.targetTexture.name = gameObject.name + "_RightEyeRT";
                         rightCam.depth = 1;
+
+                        if(rowInterleaveHalfHeight)
+                        {
+                            // Point sampling maps display rows 2k and 2k+1 to eye row k without blending rows.
+                            leftCam.targetTexture.filterMode = FilterMode.Point;
+                            rightCam.targetTexture.filterMode = FilterMode.Point;
+                        }
 
                         // The compositing camera draws nothing itself. Keep a solid-color clear: URP
                         // skips a camera with cullingMask 0 and no clear, and the composite never runs.
@@ -495,7 +507,7 @@ namespace UniCAVE
                         interleave.rightEyeCamera = rightCam;
                         interleave.swapEyes = rowInterleaveSwapEyes;
 
-                        Debug.Log("Setting Display: " + gameObject.name + " to Row-Interleaved Passive Stereo (" + rtW + "x" + rtH + ")");
+                        Debug.Log("Setting Display: " + gameObject.name + " to Row-Interleaved Passive Stereo (" + rtW + "x" + rtH + ", eyes " + rtW + "x" + eyeH + ")");
 #if UNITY_STANDALONE_WIN
                         if(manager == null) WindowsUtils.SetMyWindowInfo("Row-Interleaved Stereo", windowBounds.x, windowBounds.y, windowBounds.width, windowBounds.height, 441, 411);
 #endif
@@ -634,9 +646,17 @@ namespace UniCAVE
         /// </summary>
         private void LateUpdate()
         {
+            // A half-height eye row is centred between two panel rows; shift each eye half a row onto its own rows.
+            Vector3 leftShift = Vector3.zero;
+            if(rowInterleaved && rowInterleaveHalfHeight && interleaveRows > 0)
+            {
+                Vector3 halfRow = transform.up * (height * 0.5f / interleaveRows);
+                leftShift = rowInterleaveSwapEyes ? -halfRow : halfRow;   // the left eye gets the upper row of each pair unless swapped
+            }
+
             if(leftCam != null)
             {
-                Matrix4x4 leftMat = Util.getAsymProjMatrix(LowerLeft, LowerRight, UpperLeft, leftCam.transform.position, head.nearClippingPlane, head.farClippingPlane);
+                Matrix4x4 leftMat = Util.getAsymProjMatrix(LowerLeft + leftShift, LowerRight + leftShift, UpperLeft + leftShift, leftCam.transform.position, head.nearClippingPlane, head.farClippingPlane);
                 leftCam.projectionMatrix = leftMat;
                 leftCam.transform.rotation = transform.rotation;
             }
@@ -646,7 +666,7 @@ namespace UniCAVE
                 // In mono the right eye moves onto the left one; changing only the frustum would
                 // leave the two views apart.
                 rightCam.transform.localPosition = head.GetEyeOffset(head.mono ? HeadConfiguration.Eyes.Left : HeadConfiguration.Eyes.Right);
-                Matrix4x4 rightMat = Util.getAsymProjMatrix(LowerLeft, LowerRight, UpperLeft, rightCam.transform.position, head.nearClippingPlane, head.farClippingPlane);
+                Matrix4x4 rightMat = Util.getAsymProjMatrix(LowerLeft - leftShift, LowerRight - leftShift, UpperLeft - leftShift, rightCam.transform.position, head.nearClippingPlane, head.farClippingPlane);
                 rightCam.projectionMatrix = rightMat;
                 rightCam.transform.rotation = transform.rotation;
             }
@@ -841,6 +861,7 @@ namespace UniCAVE
                 SerializedProperty dualInstance = serializedObject.FindProperty(nameof(PhysicalDisplay.dualInstance));
                 SerializedProperty rowInterleaved = serializedObject.FindProperty(nameof(PhysicalDisplay.rowInterleaved));
                 SerializedProperty rowInterleaveSwapEyes = serializedObject.FindProperty(nameof(PhysicalDisplay.rowInterleaveSwapEyes));
+                SerializedProperty rowInterleaveHalfHeight = serializedObject.FindProperty(nameof(PhysicalDisplay.rowInterleaveHalfHeight));
                 SerializedProperty windowBounds = serializedObject.FindProperty(nameof(PhysicalDisplay.windowBounds));
 
                 EditorGUILayout.PropertyField(is3D);
@@ -862,6 +883,8 @@ namespace UniCAVE
 
                         EditorGUILayout.PropertyField(rowInterleaveSwapEyes,
                             new GUIContent("Swap Eyes", "Swap which eye gets even vs odd rows (depends on panel polarizer orientation)"));
+                        EditorGUILayout.PropertyField(rowInterleaveHalfHeight,
+                            new GUIContent("Half-Height Eyes", "Render each eye at half the window height: each eye only shows every second row"));
                         EditorGUILayout.PropertyField(windowBounds);
                     }
                     else

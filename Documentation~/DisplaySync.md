@@ -28,6 +28,11 @@ argument is present, and both turn VSync on, so the frame rate is capped
 at the display refresh rate. Do not use them for timing measurements.
 Without the arguments nothing changes.
 
+These mechanisms are for screens on different GPUs. When all screens
+hang off one GPU, as on CAVERN, render them from one process instead
+(see [Rigs](Rigs.md#how-many-instances)): one process shows the same
+frame on every screen without any sync.
+
 ## Requirements
 
 NVIDIA RTX/Quadro class GPUs (not GeForce) with driver 472.12 or newer,

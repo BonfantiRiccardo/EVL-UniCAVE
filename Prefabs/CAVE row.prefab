@@ -61,6 +61,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: 0

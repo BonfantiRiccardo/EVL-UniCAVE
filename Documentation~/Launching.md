@@ -9,8 +9,16 @@ The package ships with launcher templates under `CAVEScripts/`:
 | `launch.ps1` | Spawns instances. On the master: one host instance (headless if `Master.Headless` is true). On a display node: one instance per GPU listed in `nodes.json`, each pinned to its target column or row via `-force-device-index` and `-monitor`. |
 | `launch_arcade.ps1` | Single-PC variant for ARCADE2: starts the head and the client on loopback, one per GPU, and foregrounds the head window for keyboard input. Instance list is inline at the top of the script. `-Sync` locks both screens to the same frame (see [Display sync](DisplaySync.md)). |
 | `launch_arcade_sync.ps1` | Runs `launch_arcade.ps1 -Sync`; usable with right-click > Run with PowerShell. |
+| `launch_cavern.ps1` | Single-PC launcher for CAVERN: starts one instance that renders all three screens in one window over the three monitors, and brings that window to the front for keyboard input. Usable with right-click > Run with PowerShell. |
 | `kill.ps1` | Terminates every running player on the host: every process started from an exe in the script's folder or below it, or every process named by `-ExeName`. |
 | `nodes.json` | Hostname-to-virtual-name mapping, master address, an optional exe name, and the tracking server (`TrackerHost`, empty in the package). Used by `launch.ps1`. Edit before building to match your cluster. |
+
+Set Windows display scaling to 100% on every PC that runs the
+launchers. `launch.ps1` and `launch_arcade.ps1` find the monitors through
+Windows' scaled desktop coordinates, so other scaling values break them.
+`launch_cavern.ps1` reads the real pixel positions and copes with any
+scaling, but its window spans three monitors, so 100% is still the safe
+choice.
 
 Edit `nodes.json` to match your hardware (master hostname/IP, per-node
 GPU list), then build. Leave `ExeName` empty to use the only exe in the
@@ -99,3 +107,11 @@ If the wand moves the rig in the wrong direction while a gamepad is
 connected, disable `GamepadLocomotion` and look for the
 `[GamepadLocomotion] reading gamepad` line in the head's player log,
 which names the device it read.
+
+## Troubleshooting
+
+| Symptom | What to do |
+|---|---|
+| PowerShell says running scripts is disabled on this system | Run `Get-ExecutionPolicy -List`. A `MachinePolicy` entry overrides every other setting, including `-ExecutionPolicy Bypass`. An administrator has to remove it (registry key `HKLM\SOFTWARE\Policies\Microsoft\Windows\PowerShell`); open a new PowerShell window afterwards, because a running one keeps the old value. Builds copied from a download or a zip may also need `Get-ChildItem -Recurse \| Unblock-File`. |
+| A launcher reports that no screen was found at a desktop X | The Windows display arrangement does not match the `windowBounds` baked into the prefab. Fix the arrangement in Settings > System > Display, or the prefab values. |
+| Several instances share one GPU and the ones without keyboard focus run much slower | Windows gives the focused window priority on a busy GPU. Render the screens on that GPU from one process with a `PhysicalDisplayManager` (see [Rigs](Rigs.md#how-many-instances)). |

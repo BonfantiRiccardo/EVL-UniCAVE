@@ -87,21 +87,27 @@ namespace UniCAVE
             private class PassData
             {
                 public Material material;
+                public bool setViewport;   // drawing straight to the window, where several cameras may share it
+                public Rect viewport;
             }
 
             public override void RecordRenderGraph(RenderGraph renderGraph, ContextContainer frameData)
             {
                 UniversalResourceData resourceData = frameData.Get<UniversalResourceData>();
+                UniversalCameraData cameraData = frameData.Get<UniversalCameraData>();
 
                 using (var builder = renderGraph.AddRasterRenderPass<PassData>("Row Interleave Stereo", out var data))
                 {
                     data.material = material;
+                    data.setViewport = resourceData.isActiveTargetBackBuffer;
+                    data.viewport = cameraData.camera.pixelRect;
 
                     builder.SetRenderAttachment(resourceData.activeColorTexture, 0, AccessFlags.Write);
 
                     builder.AllowPassCulling(false);
                     builder.SetRenderFunc((PassData d, RasterGraphContext ctx) =>
                     {
+                        if (d.setViewport) ctx.cmd.SetViewport(d.viewport);
                         // Fullscreen triangle with the interleave material.
                         ctx.cmd.DrawProcedural(Matrix4x4.identity, d.material, 0, MeshTopology.Triangles, 3);
                     });

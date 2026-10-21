@@ -2,26 +2,30 @@
 
 EVL-UniCAVE runs one Unity application on an immersive display made of
 several screens, such as a CAVE or a pair of 3D monitors. Each screen
-has its own Unity process, on one PC or on many. One process, the head,
-reads input and tracking and sends the rig pose to the others over the
-network. Each process then renders its screen with an off-axis
-projection for the tracked viewer, so all screens show one consistent
-scene.
+has its own Unity process, on one PC or on many, and screens that share
+a GPU can share one process. One process, the head, reads input and
+tracking and sends the rig pose to the others over the network. Each
+process then renders its screens with an off-axis projection for the
+tracked viewer, so all screens show one consistent scene.
 
 EVL-UniCAVE is a fork of
 [UniCAVE](https://github.com/livingenvironmentslab/UniCAVE) 2.0.1 by the
 Living Environments Laboratory at UW Madison. Upstream targets Unity
 2019.4 and 2021 LTS with the Multiplayer HLAPI and does not compile in
-Unity 6. We use this fork on EVL's CAVE2 and ARCADE2.
+Unity 6. We use this fork on EVL's CAVE2 and ARCADE2, and on the CAVERN
+rig.
 
 This fork adds:
 
 * A port to Unity 6, Netcode for GameObjects, URP and the Input System.
 * Row-interleaved passive stereo for micropolarized panels, such as the
-  CAVE2 panels.
+  CAVE2 panels. Each eye is rendered only at the rows it can see, which
+  halves the rendering work.
 * Ready prefabs for EVL's CAVE2 (22 GPUs on 7 PCs) and ARCADE2 (two 3D
-  displays on two GPUs of one PC), plus a single 3D display and a 3D
-  projector.
+  displays on two GPUs of one PC), for CAVERN (three tilted 3D monitors
+  on one GPU), plus a single 3D display and a 3D projector.
+* One process for several screens on the same GPU, so the screens do not
+  compete for the GPU and always show the same frame.
 * Window placement that works when one PC runs several Unity processes.
 * Wand and gamepad navigation. The tracking server's address is set at
   launch, so the project never stores it.
@@ -72,6 +76,7 @@ created from the **Universal 3D** template already has URP and uGUI.
    |---|---|---|
    | `Prefabs/CAVE2.prefab` | EVL CAVE2: 18 columns and 4 back-wall segments, passive stereo | 22, on 7 PCs |
    | `Prefabs/ARCADE2.prefab` | Two side-by-side 3D displays on two GPUs | 2, on one PC |
+   | `Prefabs/CAVERN.prefab` | Three tilted 3D monitors on one GPU, passive stereo | 1, for all three screens |
    | `Prefabs/ARCADE.prefab` | One side-by-side 3D display | 1 |
    | `Prefabs/PROJECTOR.prefab` | One 3D projector | 1 |
 
@@ -94,19 +99,21 @@ created from the **Universal 3D** template already has URP and uGUI.
    * ARCADE2: right-click `launch_arcade_sync.ps1` > Run with PowerShell
      for screens that show the same frame, or `launch_arcade.ps1` for
      free-running screens, which timing measurements need.
+   * CAVERN: right-click `launch_cavern.ps1` > Run with PowerShell.
 
    If you navigate with a gamepad, set **Project Settings > Input System
    Package > Background Behavior** to **Ignore Focus**, so the gamepad
    keeps working when the head window is not in the foreground.
 
 One build serves every screen. Each `PhysicalDisplay` is active only in
-the process whose machine name matches its `MachineName` asset, and the
-launch scripts give each process its name with `overrideMachineName`.
+the process whose machine name matches its `MachineName` asset, or the
+machine name of its `PhysicalDisplayManager` when it has one. The launch
+scripts give each process its name with `overrideMachineName`.
 
 Further documentation:
 
-* [Rigs](Documentation~/Rigs.md): prefab settings, CAVE2 and ARCADE2
-  details, stereo modes, and how to build a rig of your own.
+* [Rigs](Documentation~/Rigs.md): prefab settings, CAVE2, ARCADE2 and
+  CAVERN details, stereo modes, and how to build a rig of your own.
 * [Launching](Documentation~/Launching.md): launch scripts, `nodes.json`,
   the tracking server, and runtime keys.
 * [Wand button actions](Documentation~/WandButtons.md): how wand button

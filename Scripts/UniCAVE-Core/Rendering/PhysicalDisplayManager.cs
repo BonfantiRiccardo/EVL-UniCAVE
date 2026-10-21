@@ -59,6 +59,43 @@ namespace UniCAVE
                 return;
             }
             Debug.Log("Display Manager Active: " + gameObject.name);
+#if UNITY_STANDALONE_WIN
+            //managed displays skip their own window placement, so a windowed manager places one window over all of them
+            RectInt bounds = DisplayBounds();
+            if(!fullscreen && bounds.width > 0 && bounds.height > 0)
+            {
+                WindowsUtils.SetMyWindowInfo("Display Manager", bounds.x, bounds.y, bounds.width, bounds.height, 0, 0);
+            }
+#endif
+        }
+
+        /// <summary>
+        /// Union of the managed displays' window bounds, in desktop pixels
+        /// </summary>
+        RectInt DisplayBounds()
+        {
+            bool any = false;
+            int xMin = 0, yMin = 0, xMax = 0, yMax = 0;
+            foreach(PhysicalDisplay d in displays)
+            {
+                if(d == null || d.windowBounds.width <= 0 || d.windowBounds.height <= 0) continue;
+                RectInt b = d.windowBounds;
+                xMin = any ? Mathf.Min(xMin, b.xMin) : b.xMin;
+                yMin = any ? Mathf.Min(yMin, b.yMin) : b.yMin;
+                xMax = any ? Mathf.Max(xMax, b.xMax) : b.xMax;
+                yMax = any ? Mathf.Max(yMax, b.yMax) : b.yMax;
+                any = true;
+            }
+            return any ? new RectInt(xMin, yMin, xMax - xMin, yMax - yMin) : new RectInt(0, 0, 0, 0);
+        }
+
+        /// <summary>
+        /// Camera pixel rect (origin bottom left) of desktop bounds inside the window that covers all managed displays
+        /// </summary>
+        Rect WindowRect(RectInt b)
+        {
+            RectInt window = DisplayBounds();
+            return new Rect(b.x - window.x, window.yMax - b.yMax, b.width, b.height);
         }
 
         /// <summary>
@@ -97,6 +134,13 @@ namespace UniCAVE
                     for(int i = 0; i < displays.Count; i++)
                     {
                         PhysicalDisplay display = displays[i];
+
+                        //row-interleaved eyes render into textures; only the compositing camera goes into the window
+                        if(display.rowInterleaved && display.centerCam != null)
+                        {
+                            display.centerCam.pixelRect = WindowRect(display.windowBounds);
+                            continue;
+                        }
 
                         PhysicalDisplayCalibration cali = display.gameObject.GetComponent<PhysicalDisplayCalibration>();
                         if(cali == null)

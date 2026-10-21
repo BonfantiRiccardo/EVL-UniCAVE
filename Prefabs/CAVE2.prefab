@@ -61,6 +61,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 2732
     y: -2304
@@ -163,6 +164,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: -2304
@@ -299,6 +301,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 2732
     y: -2304
@@ -401,6 +404,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: -2304
@@ -503,6 +507,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 1366
     y: -2304
@@ -605,6 +610,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 1366
     y: -2304
@@ -741,6 +747,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 2732
     y: -2304
@@ -911,6 +918,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: -2304
@@ -1013,6 +1021,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: 0
@@ -1115,6 +1124,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 2732
     y: -2304
@@ -1217,6 +1227,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 1366
     y: -2304
@@ -1319,6 +1330,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 1366
     y: -2304
@@ -1474,6 +1486,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: -2304
@@ -1576,6 +1589,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: 2304
@@ -1678,6 +1692,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 2732
     y: -2304
@@ -1852,6 +1867,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 2732
     y: -2304
@@ -1954,6 +1970,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: 1536
@@ -2091,6 +2108,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: 768
@@ -2463,6 +2481,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: -2304
@@ -2565,6 +2584,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 1366
     y: -2304
@@ -2667,6 +2687,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 0
     y: -2304
@@ -2769,6 +2790,7 @@ MonoBehaviour:
   dualInstance: 0
   rowInterleaved: 1
   rowInterleaveSwapEyes: 0
+  rowInterleaveHalfHeight: 1
   windowBounds:
     x: 1366
     y: -2304
