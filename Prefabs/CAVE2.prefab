@@ -2243,7 +2243,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 4162407135
+  GlobalObjectIdHash: 3192195532
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -2289,7 +2289,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.NetworkInitialization
   networkManager: {fileID: 0}
-  targetFrameRate: 120
+  targetFrameRate: 180
   oldHeadMachine: C6_V1_HEAD
   headMachineAsset: {fileID: 11400000, guid: 6d370416a1cd59a418b00f9e12b87c80, type: 2}
   serverAddress: 10.0.0.175
@@ -2335,6 +2335,7 @@ MonoBehaviour:
   turnSpeed: 10
   invertTurn: 0
   verticalSpeed: 1
+  sprintMultiplier: 1.5
 --- !u!114 &5433479464422604797
 MonoBehaviour:
   m_ObjectHideFlags: 0
