@@ -236,7 +236,8 @@ rendering work. Anything drawn into the eye cameras must support
 non-square pixels, that is, separate horizontal and vertical focal
 lengths. Unity's own rendering does. A custom renderer that sizes its
 screen-space shapes with one focal length for both axes draws them twice
-as tall.
+as tall. The flag can also be changed while the application runs: the
+display rebuilds its eye textures before the next frame.
 
 ### Per-display fields that matter
 

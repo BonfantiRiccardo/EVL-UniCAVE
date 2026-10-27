@@ -95,6 +95,43 @@ namespace UniCAVE
 
         private bool updatedViewports = false;
         private int interleaveRows;   // window rows of a row-interleaved display, set when its eye textures are made
+        private int InterleaveEyeHeight => rowInterleaveHalfHeight ? (interleaveRows + 1) / 2 : interleaveRows;
+
+        /// <summary>
+        /// Creates the eye textures of a row-interleaved display at the current eye height and frees the previous ones.
+        /// </summary>
+        private void CreateInterleaveEyeTextures(int width)
+        {
+            RenderTexture oldLeft = leftCam.targetTexture;
+            RenderTexture oldRight = rightCam.targetTexture;
+
+            leftCam.targetTexture = new RenderTexture(width, InterleaveEyeHeight, 24);
+            leftCam.targetTexture.name = gameObject.name + "_LeftEyeRT";
+            rightCam.targetTexture = new RenderTexture(width, InterleaveEyeHeight, 24);
+            rightCam.targetTexture.name = gameObject.name + "_RightEyeRT";
+
+            if(rowInterleaveHalfHeight)
+            {
+                // Point sampling maps display rows 2k and 2k+1 to eye row k without blending rows.
+                leftCam.targetTexture.filterMode = FilterMode.Point;
+                rightCam.targetTexture.filterMode = FilterMode.Point;
+            }
+
+            if(oldLeft != null) Destroy(oldLeft);
+            if(oldRight != null) Destroy(oldRight);
+        }
+
+        /// <summary>
+        /// Rebuilds the eye textures when rowInterleaveHalfHeight was changed while running.
+        /// </summary>
+        private void SyncInterleaveEyeTextures()
+        {
+            if(!rowInterleaved || interleaveRows <= 0 || leftCam == null || rightCam == null || leftCam.targetTexture == null) return;
+            if(leftCam.targetTexture.height == InterleaveEyeHeight) return;
+
+            CreateInterleaveEyeTextures(leftCam.targetTexture.width);
+            Debug.Log("Display " + gameObject.name + ": row-interleaved eyes now " + leftCam.targetTexture.width + "x" + leftCam.targetTexture.height);
+        }
 
         /// <summary>
         /// Set normalized viewport rects for dual-pipe side-by-side stereo.
@@ -465,23 +502,11 @@ namespace UniCAVE
 
                         int rtW = windowBounds.width  > 0 ? windowBounds.width  : Screen.width;
                         int rtH = windowBounds.height > 0 ? windowBounds.height : Screen.height;
-                        int eyeH = rowInterleaveHalfHeight ? (rtH + 1) / 2 : rtH;
                         interleaveRows = rtH;
 
-                        leftCam.targetTexture = new RenderTexture(rtW, eyeH, 24);
-                        leftCam.targetTexture.name = gameObject.name + "_LeftEyeRT";
+                        CreateInterleaveEyeTextures(rtW);
                         leftCam.depth = 0;
-
-                        rightCam.targetTexture = new RenderTexture(rtW, eyeH, 24);
-                        rightCam.targetTexture.name = gameObject.name + "_RightEyeRT";
                         rightCam.depth = 1;
-
-                        if(rowInterleaveHalfHeight)
-                        {
-                            // Point sampling maps display rows 2k and 2k+1 to eye row k without blending rows.
-                            leftCam.targetTexture.filterMode = FilterMode.Point;
-                            rightCam.targetTexture.filterMode = FilterMode.Point;
-                        }
 
                         // The compositing camera draws nothing itself. Keep a solid-color clear: URP
                         // skips a camera with cullingMask 0 and no clear, and the composite never runs.
@@ -507,7 +532,7 @@ namespace UniCAVE
                         interleave.rightEyeCamera = rightCam;
                         interleave.swapEyes = rowInterleaveSwapEyes;
 
-                        Debug.Log("Setting Display: " + gameObject.name + " to Row-Interleaved Passive Stereo (" + rtW + "x" + rtH + ", eyes " + rtW + "x" + eyeH + ")");
+                        Debug.Log("Setting Display: " + gameObject.name + " to Row-Interleaved Passive Stereo (" + rtW + "x" + rtH + ", eyes " + rtW + "x" + InterleaveEyeHeight + ")");
 #if UNITY_STANDALONE_WIN
                         if(manager == null) WindowsUtils.SetMyWindowInfo("Row-Interleaved Stereo", windowBounds.x, windowBounds.y, windowBounds.width, windowBounds.height, 441, 411);
 #endif
@@ -646,12 +671,14 @@ namespace UniCAVE
         /// </summary>
         private void LateUpdate()
         {
+            SyncInterleaveEyeTextures();
+
             // A half-height eye row is centred between two panel rows; shift each eye half a row onto its own rows.
             Vector3 leftShift = Vector3.zero;
             if(rowInterleaved && rowInterleaveHalfHeight && interleaveRows > 0)
             {
                 Vector3 halfRow = transform.up * (height * 0.5f / interleaveRows);
-                leftShift = rowInterleaveSwapEyes ? -halfRow : halfRow;   // the left eye gets the upper row of each pair unless swapped
+                leftShift = rowInterleaveSwapEyes ? halfRow : -halfRow;   // the composite counts rows from the window bottom, so the left eye gets the lower row of each pair unless swapped
             }
 
             if(leftCam != null)

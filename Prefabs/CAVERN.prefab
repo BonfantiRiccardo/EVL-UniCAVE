@@ -116,6 +116,7 @@ GameObject:
   - component: {fileID: 4671034968680651634}
   - component: {fileID: 3629654863318606358}
   - component: {fileID: 5158687669852372049}
+  - component: {fileID: 6793516563356031703}
   m_Layer: 0
   m_Name: CAVERN
   m_TagString: Untagged
@@ -181,7 +182,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.UCNetwork
   ShowTopMostFoldoutHeaderGroup: 1
-  head: {fileID: 0}
+  head: {fileID: 6717932849392702565}
   enableManualNavigation: 1
   navMoveSpeed: 1
   navRotateSpeed: 15
@@ -201,7 +202,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UniCAVE::UniCAVE.NetworkInitialization
   networkManager: {fileID: 0}
-  targetFrameRate: 60
+  targetFrameRate: 240
   oldHeadMachine: C6_V1_HEAD
   headMachineAsset: {fileID: 11400000, guid: 03a5105259b314343a3bbdbb244bb543, type: 2}
   serverAddress: 127.0.0.1
@@ -224,6 +225,46 @@ MonoBehaviour:
   rotateSpeed: 20
   verticalSpeed: 1.5
   stickDeadZone: 0.15
+--- !u!114 &6793516563356031703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2618788333223519981}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 61f55b8397232be48aff5298c31f7c02, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UniCAVE::UniCAVE.AutoNavigator
+  ShowTopMostFoldoutHeaderGroup: 1
+  segments: []
+  maxMoveSpeed: 5
+  maxTurnSpeed: 45
+  pathScale: 1
+  pathBearingDeg:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  pathScaleMul:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  invertForward: 1
+  invertRight: 1
+  allowKeyboardTrigger: 0
+  runOnStart: 0
+  path: 0
+  replayMode: 0
+  replayDeltaTime: 0.033333335
 --- !u!1 &3851813911541138286
 GameObject:
   m_ObjectHideFlags: 0
@@ -531,5 +572,5 @@ MonoBehaviour:
   leftEyeOffset: {x: -0.03125, y: 0, z: 0}
   rightEyeOffset: {x: 0.03125, y: 0, z: 0}
   nearClippingPlane: 0.01
-  farClippingPlane: 100
+  farClippingPlane: 150
   mono: 0
