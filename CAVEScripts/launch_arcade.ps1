@@ -22,8 +22,7 @@
 
 .PARAMETER Sync
     Lock both screens to the same frame: passes "frameLock 1 swapBarrier 1"
-    (pose lockstep plus the NVIDIA present barrier, VSync on) and
-    "frameLockTargetMs $syncTargetMs" (the pairing these screens need). Needs the
+    (pose lockstep plus the NVIDIA present barrier, VSync on). Needs the
     framelocked Sync board; frame rate is capped at the display refresh, so
     never use it for timing runs. Single flags go through -ExtraArgs.
 #>
@@ -58,8 +57,7 @@ Add-Type -AssemblyName System.Windows.Forms
 $serverAddress = '127.0.0.1'
 $serverPort    = 6543
 $exeName       = ''   # empty: the only player exe next to this script
-$staggerMs     = 2000
-$syncTargetMs  = '-8.5'   # -Sync: ms after the left GPU that the right GPU shows each pose (negative = before)
+$staggerMs     = 0    # delay after each instance; 0 starts head and client together
 
 $instances = @(
     @{ name = 'GALAGA1';   gpu = 0; targetX = 0    },   # head / server / left  screen
@@ -172,7 +170,7 @@ function Start-ArcadeInstance($inst) {
         '-screen-width',       $screen.w,
         '-screen-height',      $screen.h
     )
-    if ($Sync) { $argList += @('frameLock', '1', 'swapBarrier', '1', 'frameLockTargetMs', $syncTargetMs) }
+    if ($Sync) { $argList += @('frameLock', '1', 'swapBarrier', '1') }
     $argList += $extra
 
     $p = Start-Process -FilePath $exe -ArgumentList $argList -PassThru
@@ -180,12 +178,12 @@ function Start-ArcadeInstance($inst) {
     return $p
 }
 
-if ($Sync) { Write-Host "[ARCADE] sync on: frameLock 1 swapBarrier 1 frameLockTargetMs $syncTargetMs (VSync, capped at the refresh rate)" }
+if ($Sync) { Write-Host "[ARCADE] sync on: frameLock 1 swapBarrier 1 (VSync, capped at the refresh rate)" }
 
 $procs = @()
 foreach ($inst in $instances) {
     $procs += (Start-ArcadeInstance $inst)
-    Start-Sleep -Milliseconds $staggerMs   # stagger to avoid a D3D device-creation race
+    if ($staggerMs -gt 0) { Start-Sleep -Milliseconds $staggerMs }
 }
 
 # Bring the head (first instance) to the foreground so keyboard nav reaches it.

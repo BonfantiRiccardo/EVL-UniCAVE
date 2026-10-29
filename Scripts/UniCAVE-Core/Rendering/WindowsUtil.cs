@@ -117,6 +117,10 @@ namespace UniCAVE
             return true;
         }
 
+        /// <summary>True while a window move requested by SetMyWindowInfo has not been applied yet.</summary>
+        public static bool RepositionPending => _pending;
+#else
+        public static bool RepositionPending => false;
 #endif
     }
 }

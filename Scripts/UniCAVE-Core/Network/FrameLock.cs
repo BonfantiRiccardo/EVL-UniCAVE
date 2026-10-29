@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
@@ -16,18 +17,20 @@ namespace UniCAVE
 {
     /// <summary>
     /// Frame lockstep between the head and its display clients over a dedicated TCP channel. Every frame
-    /// the head sends the rig pose once all pose writers have run, and never waits for the clients. While
-    /// the present barrier is in sync, a client waits for the next pose and shows every pose once and in
-    /// order. Otherwise it waits up to "frameLockWaitMs" (default 8) for a new pose, shows the newest one,
-    /// or reuses the previous pose.
+    /// the head sends the rig pose once all pose writers have run. While the present barrier is in sync, a
+    /// client waits for the next pose and shows every pose once and in order. Otherwise it waits up to
+    /// "frameLockWaitMs" (default 8) for a new pose, shows the newest one, or reuses the previous pose.
     /// With <see cref="SwapBarrier"/> active, the head picks the state at which all instances join the
-    /// barrier, then measures for every pose how much later a client's GPU showed it than the head's, and
-    /// keeps that difference within half a frame of "frameLockTargetMs" (default 0; GPUs that report
-    /// different vsync times need another value). Corrections only ever delay: when a client is
-    /// behind, the head shows its own poses a frame later; when a client is ahead, the head removes that
-    /// delay or the client shows its previous pose once more ("frameLockAutoAlign 0" turns this off).
-    /// Advancing a client instead would leave it waiting a whole frame for a pose. On the head, ] and [
-    /// apply the same corrections by hand and move the target with them.
+    /// barrier. Once every instance is in sync, the head holds once, until every client has shown the
+    /// previous pose and every present queue is empty, so the next pose reaches all screens at the same
+    /// refresh; this is the only time the head waits for the clients. It then measures for every pose how
+    /// much later a client's GPU showed it than the head's, and keeps the difference it measured right
+    /// after the hold. With "frameLockTargetMs N" the head skips the hold and keeps the difference within
+    /// half a frame of N instead. Corrections only ever delay: when a client is behind, the head shows its
+    /// own poses a frame later; when a client is ahead, the head removes that delay or the client shows its
+    /// previous pose once more ("frameLockAutoAlign 0" turns the hold and the corrections off). Advancing a
+    /// client instead would leave it waiting a whole frame for a pose. On the head, ] and [ apply the same
+    /// corrections by hand and move the target with them.
     /// Active only with the command-line argument "frameLock 1"; turns VSync on.
     /// </summary>
     [DefaultExecutionOrder(-30000)]
@@ -47,7 +50,10 @@ namespace UniCAVE
         const int MaxBacklog = 8;              // in-order mode drops to the newest pose beyond this many
         const int ClientSilenceMs = 2000;      // the head drops a client that stops acknowledging
         const int JoinLeadStates = 10;         // the head announces the join state this far ahead
-        const int JoinSettleFrames = 30;       // every instance reports ready this long before the join
+        const int JoinSettleFrames = 10;       // every instance reports ready this long before the join
+        const int HoldSettleFrames = 10;       // every instance is in sync this long before the head holds
+        const int HoldTimeoutMs = 1000;        // the head stops waiting for an acknowledgement after this
+        const int HoldDrainFrames = 6;         // frames that let every present queue empty during the hold
         const int AlignWindow = 30;            // pairing measurements needed before a correction
         const float AlignAgreement = 0.8f;     // share of the window that must agree on the offset
         const int AlignQuietFrames = 60;       // after a correction, new measurements still describe the old pairing
@@ -81,6 +87,7 @@ namespace UniCAVE
             public readonly byte[] Rx = new byte[4096];
             public int RxLen;
             public bool Synced;                // has acknowledged at least one state
+            public uint LastAck;               // newest state the client applied
             public uint LastAckFlags;
             public long LastAckTime;
             public int HoldPending;            // poses the client still has to show twice, sent with the next state
@@ -91,6 +98,9 @@ namespace UniCAVE
             public int OffsetCount;
             public int OffsetNext;
             public int Mode;
+            public bool HasReference;
+            public double ReferenceMs;         // client display minus head display, measured after the hold
+            public readonly List<double> ReferenceSamples = new List<double>(AlignWindow);
             public int ReportSamples;
             public int ReportAligned;
             public readonly List<double> ReportDeltaMs = new List<double>(512);   // client display minus head display, same pose
@@ -136,6 +146,9 @@ namespace UniCAVE
         double periodMs;
         float targetMs;                        // wanted client display time minus head display time for one pose
         bool autoAlign = true;
+        bool holdToAlign;                      // hold once and keep that pairing; false with an explicit target
+        bool held;
+        int syncedFrames;                      // consecutive frames with every instance in sync, before the hold
         int alignQuietUntil;                   // frame before which measurements are not used for corrections
         int autoCorrections;
 
@@ -181,7 +194,8 @@ namespace UniCAVE
             SwapBarrier.JoinControlledExternally = true;
             clockFrequency = ClockFrequency();
             autoAlign = Util.GetArg("frameLockAutoAlign") != "0";
-            float.TryParse(Util.GetArg("frameLockTargetMs"), NumberStyles.Float, CultureInfo.InvariantCulture, out targetMs);
+            bool fixedTarget = float.TryParse(Util.GetArg("frameLockTargetMs"), NumberStyles.Float, CultureInfo.InvariantCulture, out targetMs);
+            holdToAlign = autoAlign && !fixedTarget;
         }
 
         void Start()
@@ -261,8 +275,10 @@ namespace UniCAVE
                     ended = true;
                     return;
                 }
-                Debug.Log($"FrameLock: head listening on {bind}:{port}; automatic pairing correction {(autoAlign ? "on" : "off")}, " +
-                          $"target {targetMs.ToString("F1", CultureInfo.InvariantCulture)} ms. VSync on.");
+                string pairing = !autoAlign ? "automatic pairing off"
+                    : holdToAlign ? "holds once when every instance is in sync, then keeps that pairing"
+                    : $"keeps the pairing at target {targetMs.ToString("F1", CultureInfo.InvariantCulture)} ms";
+                Debug.Log($"FrameLock: head listening on {bind}:{port}; {pairing}. VSync on.");
             }
             else
             {
@@ -301,12 +317,21 @@ namespace UniCAVE
         void MoveTarget(int frames)
         {
             if(frames == 0 || periodMs <= 0.0) return;
+            if(holdToAlign)
+            {
+                foreach(Peer p in peers)
+                {
+                    if(p.HasReference) p.ReferenceMs += frames * periodMs;
+                }
+                Debug.Log($"FrameLock: pairing moved by {frames} frame(s) by hand; the head keeps the new pairing.");
+                return;
+            }
             targetMs += frames * (float)periodMs;
             string value = targetMs.ToString("F1", CultureInfo.InvariantCulture);
             Debug.Log($"FrameLock: pairing target now {value} ms; launch with \"frameLockTargetMs {value}\" to start from it.");
         }
 
-        /// <summary>Runs after every pose writer and sends this frame's pose. Never waits for the clients.</summary>
+        /// <summary>Runs after every pose writer and sends this frame's pose. Waits for the clients only in the one-time hold.</summary>
         void HeadLateUpdate()
         {
             long start = Now();
@@ -318,6 +343,7 @@ namespace UniCAVE
 
             stateId++;
             ScheduleJoin(barrier);
+            if(HoldDue(barrier)) HoldForClients();
 
             State s = new State
             {
@@ -436,6 +462,7 @@ namespace UniCAVE
                 uint shownTag = GetU(ackBuffer, 8);
                 p.LastAckFlags = GetU(ackBuffer, 12);
                 long shownQpc = GetL(ackBuffer, 16);
+                p.LastAck = id;
                 p.LastAckTime = now;
                 if(!p.Synced)
                 {
@@ -483,8 +510,7 @@ namespace UniCAVE
                     if(r.Tag == p.LastMatchedTag) continue;
                     p.LastMatchedTag = r.Tag;
                     if(!TryHeadFirstShown(r.Tag, out long headQpc)) continue;
-                    double deltaMs = (r.Qpc - headQpc) * 1000.0 / clockFrequency;
-                    RecordOffset(p, (int)Math.Round((deltaMs - targetMs) / periodMs), deltaMs);
+                    RecordSample(p, (r.Qpc - headQpc) * 1000.0 / clockFrequency);
                 }
             }
         }
@@ -500,12 +526,32 @@ namespace UniCAVE
             return qpc != long.MaxValue;
         }
 
-        void RecordOffset(Peer p, int offset, double deltaMs)
+        /// <summary>
+        /// Records one pairing sample. After the hold, the first samples become the client's reference; every
+        /// later sample counts the frames between the measured pairing and the reference or the fixed target.
+        /// </summary>
+        void RecordSample(Peer p, double deltaMs)
         {
             p.ReportSamples++;
-            if(offset == 0) p.ReportAligned++;
             if(p.ReportDeltaMs.Count < p.ReportDeltaMs.Capacity) p.ReportDeltaMs.Add(deltaMs);
-            if(Time.frameCount < alignQuietUntil) return;
+            bool quiet = Time.frameCount < alignQuietUntil;
+
+            if(holdToAlign && !p.HasReference)
+            {
+                if(!held || quiet) return;
+                p.ReferenceSamples.Add(deltaMs);
+                if(p.ReferenceSamples.Count < AlignWindow) return;
+                p.ReferenceSamples.Sort();
+                p.ReferenceMs = p.ReferenceSamples[AlignWindow / 2];
+                p.HasReference = true;
+                Debug.Log($"FrameLock: {p.Name} keeps the pairing from the hold; it shows each pose {BeforeAfter(p.ReferenceMs)} the head.");
+                return;
+            }
+
+            double target = holdToAlign ? p.ReferenceMs : targetMs;
+            int offset = (int)Math.Round((deltaMs - target) / periodMs);
+            if(offset == 0) p.ReportAligned++;
+            if(quiet) return;
             p.Offsets[p.OffsetNext] = offset;
             p.OffsetNext = (p.OffsetNext + 1) % AlignWindow;
             if(p.OffsetCount < AlignWindow) p.OffsetCount++;
@@ -577,7 +623,58 @@ namespace UniCAVE
             {
                 p.OffsetCount = 0;
                 p.OffsetNext = 0;
+                p.ReferenceSamples.Clear();
             }
+        }
+
+        /// <summary>True once every instance has been in sync for a while after the join, until the head has held.</summary>
+        bool HoldDue(SwapBarrier barrier)
+        {
+            if(!holdToAlign || held || joinAt == 0 || stateId <= joinAt) return false;
+            bool synced = InSync(barrier) && peers.Count > 0;
+            foreach(Peer p in peers) synced &= (p.LastAckFlags & AckFlagInOrder) != 0;
+            syncedFrames = synced ? syncedFrames + 1 : 0;
+            return syncedFrames >= HoldSettleFrames;
+        }
+
+        /// <summary>
+        /// Holds the head once, before it sends the next pose, until every client has applied the previous pose
+        /// and every present queue has emptied. The barrier then flips the next pose on all screens at the same
+        /// refresh, whatever the pairing was before.
+        /// </summary>
+        void HoldForClients()
+        {
+            held = true;
+            uint previous = stateId - 1;
+            long start = Now();
+            long deadline = start + HoldTimeoutMs * clockFrequency / 1000;
+            while(!AllAcked(previous))
+            {
+                if(peers.Count == 0 || Now() >= deadline)
+                {
+                    Debug.LogWarning($"FrameLock: no acknowledgement of state {previous} within {HoldTimeoutMs} ms, so the head did not hold " +
+                                     "and keeps the current pairing. Press ] or [ if the seam breaks during motion.");
+                    BeginQuiet();
+                    return;
+                }
+                Thread.Sleep(1);
+                PollAcks(Now());
+            }
+
+            double frameMs = Math.Max(periodMs > 0.0 ? periodMs : 1000.0 / 60.0, Time.smoothDeltaTime * 1000.0);
+            Thread.Sleep((int)Math.Ceiling(HoldDrainFrames * frameMs));
+            Debug.Log($"FrameLock: held the head for {(Now() - start) * 1000.0 / clockFrequency:F0} ms before state {stateId}, " +
+                      "so every screen shows it at the same refresh.");
+            BeginQuiet();
+        }
+
+        bool AllAcked(uint id)
+        {
+            foreach(Peer p in peers)
+            {
+                if(p.LastAck < id) return false;
+            }
+            return true;
         }
 
         /// <summary>Announces the join state once every instance has reported ready for a while.</summary>
@@ -993,8 +1090,12 @@ namespace UniCAVE
                 {
                     p.ReportDeltaMs.Sort();
                     double delta = p.ReportDeltaMs.Count > 0 ? p.ReportDeltaMs[p.ReportDeltaMs.Count / 2] : 0.0;
-                    pairing = $", first client shows each pose {BeforeAfter(delta)} the head (target {BeforeAfter(targetMs)}, " +
-                              $"on target for {100.0 * p.ReportAligned / p.ReportSamples:F0}% of {p.ReportSamples} poses)";
+                    string target = !holdToAlign ? $"target {BeforeAfter(targetMs)}"
+                        : p.HasReference ? $"kept from the hold: {BeforeAfter(p.ReferenceMs)}"
+                        : held ? "measuring the pairing after the hold" : "before the hold";
+                    string share = holdToAlign && !p.HasReference ? ""
+                        : $", on target for {100.0 * p.ReportAligned / p.ReportSamples:F0}% of {p.ReportSamples} poses";
+                    pairing = $", first client shows each pose {BeforeAfter(delta)} the head ({target}{share})";
                 }
                 Debug.Log($"FrameLock head: state {stateId}, {peers.Count} frame-lock client(s) of {expected} Netcode client(s), " +
                           $"barrier join {join}{pairing}, head image delay {headDelay} frame(s), automatic corrections {autoCorrections}.");

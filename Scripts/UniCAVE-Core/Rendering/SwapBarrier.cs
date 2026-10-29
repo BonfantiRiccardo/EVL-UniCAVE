@@ -21,9 +21,9 @@ namespace UniCAVE
         const int EventCheckAdapter = 0x55435304;
         const int EventTag = 0x55435305;
 
-        const int MinStartFrames = 30;       // window repositioning happens within the first frames
-        const int SettleFrames = 30;         // the window size must stay constant this long before joining
-        const int AdapterReadDelay = 10;     // frames for the render thread to run the adapter check
+        const int MinStartFrames = 10;       // window repositioning happens within the first frames
+        const int SettleFrames = 10;         // the window size must stay constant this long before joining
+        const int AdapterReadDelay = 3;      // frames for the render thread to run the adapter check
         const float ReportInterval = 5f;
 
         [DllImport(Plugin)] static extern IntPtr UCSS_GetRenderEventFunc();
@@ -137,7 +137,7 @@ namespace UniCAVE
                 stableFrames++;
             }
 
-            if(adapterCheckFrame < 0 && Time.frameCount >= MinStartFrames && stableFrames >= SettleFrames)
+            if(adapterCheckFrame < 0 && Time.frameCount >= MinStartFrames && stableFrames >= SettleFrames && !WindowsUtils.RepositionPending)
             {
                 GL.IssuePluginEvent(renderEvent, EventCheckAdapter);
                 adapterCheckFrame = Time.frameCount;

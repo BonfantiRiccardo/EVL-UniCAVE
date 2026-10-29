@@ -158,10 +158,10 @@ process.
    physically drives the screen at `targetX`, and `targetX` must match
    that display's baked `windowBounds.x`. If a window comes up blurry or
    slow it is presenting cross-adapter, so swap the two `gpu` values.
-   The script starts the head first, staggers the second launch to avoid
-   a D3D device-creation race, and forces the head window to the
-   foreground so keyboard input reaches it. To show the same frame on
-   both screens, use `launch_arcade_sync.ps1` (see
+   The script starts the head and the client at the same time (the
+   client retries until the head's server is up) and forces the head
+   window to the foreground so keyboard input reaches it. To show the
+   same frame on both screens, use `launch_arcade_sync.ps1` (see
    [Display sync](DisplaySync.md)).
 
 ## CAVERN
