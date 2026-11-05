@@ -92,10 +92,10 @@ created from the **Universal 3D** template already has URP and uGUI.
    navigation; objects outside it stay fixed in the world.
 5. **Build a Windows player and launch it** with the scripts that the
    build copies next to the exe:
-   * CAVE2: run `launch.ps1` on every PC; it reads `nodes.json`. For
-     head and wand tracking, the head also needs the tracking server's
-     address (see
-     [Launching](Documentation~/Launching.md#tracking-server)).
+   * CAVE2: pack the build folder into an archive, then install and start
+     it with CAVE2 Control on CAVE2MASTER. It copies the build to every
+     node, fills in the tracking server's address, and runs `launch.ps1`
+     on every PC (see [Launching](Documentation~/Launching.md#cave2)).
    * ARCADE2: right-click `launch_arcade_sync.ps1` > Run with PowerShell
      for screens that show the same frame, or `launch_arcade.ps1` for
      free-running screens, which timing measurements need.
@@ -114,8 +114,9 @@ Further documentation:
 
 * [Rigs](Documentation~/Rigs.md): prefab settings, CAVE2, ARCADE2 and
   CAVERN details, stereo modes, and how to build a rig of your own.
-* [Launching](Documentation~/Launching.md): launch scripts, `nodes.json`,
-  the tracking server, and runtime keys.
+* [Launching](Documentation~/Launching.md): launch scripts, running a
+  build on CAVE2 with CAVE2 Control, `nodes.json`, the tracking server,
+  and runtime keys.
 * [Wand button actions](Documentation~/WandButtons.md): how wand button
   presses reach the head over VRPN, and how to attach your own actions
   to them.

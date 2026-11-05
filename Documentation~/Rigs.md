@@ -84,8 +84,9 @@ Manager already wired.
    component injects its own composite pass into URP. The shader sits
    in `Shaders/Resources/`, so player builds always include it.
 
-4. **Set the tracking server** as described in
-   [Launching](Launching.md#tracking-server).
+4. **Leave the tracking server to CAVE2 Control.** It writes the address
+   into the build's `nodes.json` when it installs the build (see
+   [Launching](Launching.md#tracking-server)).
 
 5. **Add scene content** as siblings of `Head` and the displays or at
    hierarchy root, inside the CAVE2 prefab. Anything inside the prefab
@@ -93,8 +94,8 @@ Manager already wired.
    the keyboard navigation in `UCNetwork` move at runtime; anything
    outside the prefab root stays in fixed world space.
 
-6. **Build for Windows Standalone**, then deploy as described in
-   [Launching](Launching.md).
+6. **Build for Windows Standalone**, then install and run the build with
+   CAVE2 Control as described in [Launching](Launching.md#cave2).
 
 ## ARCADE2
 
