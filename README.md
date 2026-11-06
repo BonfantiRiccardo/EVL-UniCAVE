@@ -61,14 +61,11 @@ created from the **Universal 3D** template already has URP and uGUI.
 
 ## Quick setup of a scene
 
-1. **Add a Network Manager.** Create an empty GameObject named
-   `Network Manager` and add **Netcode > Network Manager** and
-   **Netcode > Transports > Unity Transport**. Leave `PlayerPrefab`
-   empty, turn on `EnableSceneManagement`, and leave the transport's
-   address fields blank, because they are set at runtime. Without a
-   Network Manager, no input, navigation or pose broadcast runs. Do not
-   use `Prefabs/Default Network Manager.prefab`: it comes from upstream
-   and does not work with Netcode.
+1. **Add the Network Manager.** Drag `Prefabs/Network Manager.prefab`
+   into the scene, at the root. It holds the Netcode Network Manager and
+   Unity Transport, set up for UniCAVE. The rig sets the address and port
+   at runtime. Without a Network Manager, no input, navigation or pose
+   broadcast runs.
 2. **Add the rig prefab** at the scene root, not under another object,
    because navigation moves the prefab root:
 
@@ -82,10 +79,11 @@ created from the **Universal 3D** template already has URP and uGUI.
 
    `Scenes/` contains a ready example for CAVE2, ARCADE2 (`ARCADE.unity`)
    and the projector.
-3. **Connect the two.** On the prefab's `NetworkInitialization`
-   component, drag the scene's `Network Manager` into the
-   `Network Manager` field. The reference belongs to the scene, so
-   repeat this step in every new scene. The other fields name the head
+3. **Connect the two.** On the rig prefab's `NetworkInitialization`
+   component, drag the scene's `Network Manager` from the Hierarchy into
+   the `Network Manager` field. A reference to the prefab in the Project
+   window does not work. The reference belongs to the scene, so repeat
+   this step in every new scene. The other fields name the head
    machine (`headMachineAsset`) and its address (`serverAddress`,
    `serverPort`); the shipped values fit EVL's rigs.
 4. **Add your content.** Objects inside the prefab root move with the
