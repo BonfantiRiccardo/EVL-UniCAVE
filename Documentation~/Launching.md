@@ -128,7 +128,6 @@ Pressing it on a client does nothing.
 | `WASD`, `Q`/`E`, arrow keys | Move, raise/lower, and rotate the CAVE root (keyboard fallback when tracking is unavailable; disable with `enableManualNavigation`) |
 | `F5` | Toggle stereo/mono. In mono the right eye renders from the left eye's position, so both halves of the signal match |
 | `Esc` | Quit every instance |
-| `]` and `[` | With `frameLock 1`: shift the frame pairing of synced screens (see [Display sync](DisplaySync.md#keys)) |
 
 The CAVE2 wand is read by `WandLocomotion` and a gamepad by
 `GamepadLocomotion`. The CAVE2 prefab enables both: the wand is the

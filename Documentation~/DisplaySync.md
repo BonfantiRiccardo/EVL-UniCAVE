@@ -7,21 +7,19 @@ show different moments, which appears as a break at the bezel. Three
 mechanisms remove it:
 
 1. **Framelock** aligns the refresh of both GPUs. It is configured once
-   in the NVIDIA Control Panel (Sync tab) with an NVIDIA Sync board; no
-   application code is involved.
+   in the NVIDIA Control Panel (Workstation > Synchronize displays) with
+   an NVIDIA Sync board; no application code is involved.
 2. **Swap barrier** (`SwapBarrier`, argument `swapBarrier 1`) joins each
    process's swap chain to the NVIDIA present barrier, so both GPUs flip
    on the same refresh.
-3. **Frame lock** (`FrameLock`, argument `frameLock 1`) sends the rig
-   pose from the head to every client once per frame, over a TCP channel
-   on `serverPort + 1`. While the barrier is in sync, a client waits for
-   the next pose and shows every pose once and in order, so the n-th flip
-   after the join shows the same pose on every GPU. Otherwise it waits up
-   to `frameLockWaitMs` (default 8 ms) for a new pose and shows the newest
-   one, or reuses the previous pose. With `swapBarrier 1` the head also
-   chooses the frame at which all processes join the barrier, and sets
-   the frame pairing with a one-time hold (see below). Apart from that
-   hold, the head never waits for the clients.
+3. **Frame lock** (`FrameLock`, argument `frameLock 1`) keeps the
+   processes in lockstep over a TCP channel on `serverPort + 1`. Every
+   frame the head sends the rig pose and renders only once every client
+   has applied it, so all GPUs render the same pose at the same time. A
+   client waits for every pose and shows each one once, in order. With
+   `swapBarrier 1` the head also chooses the frame at which all processes
+   join the barrier, and checks that every screen shows each pose at the
+   same refresh (see below).
 
 Both components attach themselves to the `UCNetwork` object when their
 argument is present, and both turn VSync on, so the frame rate is capped
@@ -36,7 +34,7 @@ frame on every screen without any sync.
 ## Requirements
 
 NVIDIA RTX/Quadro class GPUs (not GeForce) with driver 472.12 or newer,
-a Sync board with framelock configured, a Windows player on Direct3D 12,
+a Sync board with framelock enabled, a Windows player on Direct3D 12,
 and each process on the GPU that drives its screen. The window must
 cover its screen exactly, without borders or desktop scaling, which the
 `-popupwindow` launch provides.
@@ -55,9 +53,7 @@ example `.\launch_arcade.ps1 -Sync -ExtraArgs "frameLockAutoAlign 0"`:
 | `frameLock 1` | Pose lockstep between the head and the clients |
 | `swapBarrier 1` | Join the NVIDIA present barrier |
 | `frameLockPort N` | Port of the frame-lock channel (default `serverPort + 1`) |
-| `frameLockWaitMs N` | How long a client waits for a new pose while the barrier is not in sync (default 8) |
-| `frameLockAutoAlign 0` | Turn off the hold and the automatic pairing correction; the keys still work |
-| `frameLockTargetMs N` | Skip the hold and keep a fixed pairing target instead: how many ms after the head's GPU a client's GPU should show each pose, negative for before |
+| `frameLockAutoAlign 0` | Measure and report the frame pairing, but do not correct it |
 
 ## Checking that it works
 
@@ -68,16 +64,18 @@ Each player log reports, in this order:
   values in `launch_arcade.ps1`.
 * On the head, `FrameLock: ... in lockstep from state N`, then
   `FrameLock: all 2 instances join the present barrier at state N`.
-* Every few seconds, `SwapBarrier: joined, sync mode SYNC_SYSTEM` (or
-  `SYNC_CLUSTER`), with `in sync` growing as fast as `presents`.
-  `SYNC_CLIENT` means that Windows composites the window instead of
-  flipping it, or that the other process has not joined.
-* On the head, once, `FrameLock: held the head for N ms before state K`,
-  then `... keeps the pairing from the hold; it shows each pose X ms
-  before the head`.
-* On the head, every few seconds, `first client shows each pose X ms
-  before the head (kept from the hold: X ms before, on target for N% of
-  M poses)`, with N close to 100%.
+* Every few seconds, `SwapBarrier: joined, sync mode SYNC_CLUSTER`, with
+  `in sync` growing as fast as `presents`. `SYNC_CLIENT` means that
+  Windows composites the window instead of flipping it, or that the other
+  process has not joined. With one GPU per screen, `SYNC_SYSTEM` means
+  that the Sync board does not lock the two refreshes.
+* On the head, once: `FrameLock: ... shows every pose at the same
+  refresh as the head`. One or two `pairing step` lines may come first.
+* On the head, every few seconds: `FrameLock head: ... acknowledgement
+  wait mean X ms ..., barrier head SYNC_CLUSTER, client SYNC_CLUSTER, ...,
+  first client shows each pose 0.00 ms after the head, at the same
+  refresh for 100% of N poses`. The wait should stay well below a
+  millisecond.
 
 On the screens, move the rig sideways at speed: when the screens are in
 sync, the image stays continuous across the bezel.
@@ -85,53 +83,36 @@ sync, the image stays continuous across the bezel.
 ## Frame pairing
 
 The barrier makes both GPUs flip together, but which pose each GPU shows
-at a given flip depends on how many frames each process still had queued
-when they joined, so a launch can start one frame or more apart. A
-one-frame offset shows as a break at the seam during motion.
+at a given flip depends on how many frames each process had queued when
+the barrier took hold. A process with one more frame in its queue shows
+every pose one refresh later, which appears as a break at the seam during
+motion. The barrier keeps that pairing until one process presents a frame
+more or less than the other.
 
-The head therefore holds once. When every instance has been in sync for
-10 frames, the head stops before it sends the next pose, waits until
-every client has applied the previous pose, and then waits 6 more frames,
-so that every present queue is empty. The head and the clients then
-render the next pose together, and the barrier flips it on all screens
-at the same refresh, whatever the pairing was before. The hold freezes
-the image for about 0.1 s, once, about a second after both screens are
-up (`FrameLock: held the head for N ms ...` in the head's log).
+The lockstep keeps the queues equal, because neither process can run
+ahead of the other. The head also measures the pairing. The plugin reads
+the DXGI frame statistics of each swap chain, which give the vsync at
+which every frame reached the screen. Each client reports which pose it
+showed at which vsync, and for every pose the head takes the client's
+vsync time minus its own; both processes run on one PC and share the QPC
+clock. When the Sync board locks the refreshes, this difference is a
+whole number of refreshes, and it must be zero.
 
-After the hold the head keeps that pairing. The plugin reads the DXGI
-frame statistics of each swap chain, which give the vsync at which every
-frame reached the screen. Each client reports to the head which pose it
-showed at which vsync, and the head computes, for every pose, the
-client's display time minus its own. The median of the first samples
-after the hold becomes the reference. Later, the head rounds the distance
-between each difference and the reference to whole refresh periods, and
-when that count is stable and not zero for half a second it corrects the
-pairing (`FrameLock: pairing correction ...` in the head's log).
+The head decides on windows of 30 poses, once every barrier has been in
+sync for half a second. When a client shows the poses a whole number of
+refreshes late, the head renders one frame without sending a pose: the
+client's extra queued frame flips with it, and the client comes one
+refresh closer. When a client shows the poses early, it shows its current
+pose once more. The head takes one step at a time and measures again
+after each one (`FrameLock: pairing step N ...` in the head's log). After
+6 steps within a minute it stops and asks for the logs.
 
-The difference itself does not say whether the pairing is right: on
-ARCADE2 the DXGI vsync times of the two GPUs differ by an amount that
-changes between launches (from 0.2 to 9 ms so far). The hold sets the
-pairing without relying on these times. `frameLockTargetMs N` skips the
-hold and keeps the difference within half a refresh period of N instead,
-for setups where the hold is not wanted.
-
-A correction only ever delays the side that is ahead: when a client is
-behind, the head keeps sending the newest pose but shows its own image
-one frame later; when a client is ahead, the head removes that delay, or
-the client shows its previous pose once more. Advancing the side that is
-behind would leave it waiting a whole frame for a pose that does not
-exist yet, which drops both screens below the refresh rate. The
-correction repeats only if the pairing drifts again.
-
-## Keys
-
-| Key | Effect |
-|---|---|
-| `]` | The head shows its image one frame later and moves the reference (or the target) with it |
-| `[` | The head removes one frame of image delay, or the clients show a pose twice, and moves the reference (or the target) with it |
-
-If the seam breaks during motion, press `]`; if the break gets worse,
-press `[` twice. Like every key, they work on the head only.
+When the difference is not close to a whole number of refreshes, the
+refreshes are not locked: the two screens refresh at different moments,
+and no frame pairing can make them show a pose together. The head then
+warns every 30 seconds (`... not frame-locked ...`) and does not correct.
+Check NVIDIA Control Panel > Workstation > Synchronize displays: one
+display is the timing server, and the other one is locked to it.
 
 ## Building the plugin
 
