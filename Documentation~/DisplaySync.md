@@ -75,7 +75,8 @@ Each player log reports, in this order:
   wait mean X ms ..., barrier head SYNC_CLUSTER, client SYNC_CLUSTER, ...,
   first client shows each pose 0.00 ms after the head, at the same
   refresh for 100% of N poses`. The wait should stay well below a
-  millisecond.
+  millisecond. When frames miss refreshes, the line also counts some
+  `vsync time(s) off the refresh grid ignored`, which is harmless.
 
 On the screens, move the rig sideways at speed: when the screens are in
 sync, the image stays continuous across the bezel.
@@ -96,7 +97,11 @@ which every frame reached the screen. Each client reports which pose it
 showed at which vsync, and for every pose the head takes the client's
 vsync time minus its own; both processes run on one PC and share the QPC
 clock. When the Sync board locks the refreshes, this difference is a
-whole number of refreshes, and it must be zero.
+whole number of refreshes, and it must be zero. When frames miss
+refreshes, the DXGI times can lie a few milliseconds off the refresh
+grid although both screens flip together. The head therefore uses only
+differences within 1 ms of a whole number of refreshes, and its report
+counts the others as ignored.
 
 The head decides on windows of 30 poses, once every barrier has been in
 sync for half a second. When a client shows the poses a whole number of
@@ -107,12 +112,14 @@ pose once more. The head takes one step at a time and measures again
 after each one (`FrameLock: pairing step N ...` in the head's log). After
 6 steps within a minute it stops and asks for the logs.
 
-When the difference is not close to a whole number of refreshes, the
-refreshes are not locked: the two screens refresh at different moments,
-and no frame pairing can make them show a pose together. The head then
-warns every 30 seconds (`... not frame-locked ...`) and does not correct.
-Check NVIDIA Control Panel > Workstation > Synchronize displays: one
-display is the timing server, and the other one is locked to it.
+The barrier reports whether the refreshes are locked. When any process
+reports `SYNC_SYSTEM` instead of `SYNC_CLUSTER`, the barrier still pairs
+the presents, but the two screens refresh at different moments, and no
+frame pairing can make them show a pose together. The head then warns
+every 30 seconds (`... the refreshes of the GPUs are not locked ...`)
+and does not correct. Check NVIDIA Control Panel > Workstation >
+Synchronize displays: one display is the timing server, and the other
+one is locked to it.
 
 ## Building the plugin
 

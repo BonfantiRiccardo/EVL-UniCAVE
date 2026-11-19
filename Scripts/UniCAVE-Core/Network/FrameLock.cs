@@ -42,7 +42,8 @@ namespace UniCAVE
         const int SyncSettleFrames = 30;       // every barrier is in sync this long before the pairing counts
         const int CheckWindow = 30;            // pairing samples per decision
         const float CheckAgreement = 0.9f;     // share of the window that must agree on the offset
-        const double LockToleranceMs = 1.0;    // a larger distance from a whole refresh means unlocked refreshes
+        const int SyncModeCluster = 3;         // barrier mode in which the Sync board locks the refreshes
+        const double GridToleranceMs = 1.0;    // a vsync difference further than this from a whole refresh is a measurement error
         const int StepSettleStates = 8;        // poses sent this soon after a step can still show the old pairing
         const int MaxSteps = 6;                // pairing steps allowed within StepWindowSeconds
         const float StepWindowSeconds = 60f;
@@ -83,13 +84,13 @@ namespace UniCAVE
             public readonly List<Shown> Reported = new List<Shown>(32);   // client screen samples not yet matched
             public long LastReportedQpc;
             public uint LastMatchedTag;
-            public readonly List<double> Window = new List<double>(CheckWindow);   // client vsync minus head vsync, same pose
+            public readonly List<int> Window = new List<int>(CheckWindow);   // client vsync minus head vsync for the same pose, in refreshes
             public bool Decided;               // Offset is a decision the head has not acted on yet
             public int Offset;                 // refreshes the client shows each pose after the head
             public int LoggedOffset = int.MinValue;
-            public float NextUnlockedWarning;
             public int ReportSamples;
             public int ReportSameRefresh;
+            public int ReportOffGrid;
             public readonly List<double> ReportDeltaMs = new List<double>(512);
         }
 
@@ -129,6 +130,8 @@ namespace UniCAVE
         double periodMs;
         bool autoAlign = true;
         int syncedFrames;                      // consecutive frames with every barrier in sync
+        bool frameLocked;                      // every barrier in sync reports SYNC_CLUSTER
+        float nextUnlockedWarning;
         uint measureFrom;                      // only poses sent after this state count for the pairing
         int steps;
         bool stepsStopped;
@@ -418,18 +421,35 @@ namespace UniCAVE
             return true;
         }
 
-        /// <summary>Counts the frames for which every barrier has been in sync; the pairing only counts after that.</summary>
+        /// <summary>
+        /// Counts the frames for which every barrier has been in sync; the pairing only counts after that. The refreshes
+        /// count as locked while every barrier reports SYNC_CLUSTER.
+        /// </summary>
         void UpdateSync(SwapBarrier barrier)
         {
             bool synced = InSync(barrier) && peers.Count > 0;
-            foreach(Peer p in peers) synced &= p.Synced && (p.LastAckFlags & AckFlagInSync) != 0;
+            bool locked = synced && barrier.SyncMode == SyncModeCluster;
+            foreach(Peer p in peers)
+            {
+                synced &= p.Synced && (p.LastAckFlags & AckFlagInSync) != 0;
+                locked &= ((p.LastAckFlags >> AckModeShift) & 3) == SyncModeCluster;
+            }
             if(!synced)
             {
                 if(syncedFrames >= SyncSettleFrames) ResetPairing(stateId);
                 syncedFrames = 0;
+                frameLocked = false;
                 return;
             }
-            if(++syncedFrames == SyncSettleFrames) ResetPairing(stateId);
+            syncedFrames++;
+            if(syncedFrames == SyncSettleFrames || (syncedFrames > SyncSettleFrames && locked != frameLocked)) ResetPairing(stateId);
+            frameLocked = locked;
+            if(syncedFrames < SyncSettleFrames || locked || Time.unscaledTime < nextUnlockedWarning) return;
+
+            nextUnlockedWarning = Time.unscaledTime + UnlockedWarningInterval;
+            Debug.LogWarning($"FrameLock: the present barrier pairs the presents, but the refreshes of the GPUs are not locked (barrier {BarrierModes()}), " +
+                             "so no pose can reach every screen at the same moment and the pairing is not corrected. Check NVIDIA Control Panel > " +
+                             "Workstation > Synchronize displays.");
         }
 
         /// <summary>Discards the pairing samples and decisions; only poses sent after the given state count again.</summary>
@@ -490,41 +510,33 @@ namespace UniCAVE
         }
 
         /// <summary>
-        /// Adds one pairing sample. A full window becomes a decision in whole refreshes, unless the samples lie
-        /// between two refreshes, which means the GPUs are not frame-locked.
+        /// Adds one pairing sample unless it lies off the refresh grid. While the refreshes are locked, a full window
+        /// becomes a decision in whole refreshes.
         /// </summary>
         void RecordSample(Peer p, double deltaMs)
         {
+            int refreshes = (int)Math.Round(deltaMs / periodMs);
+            if(Math.Abs(deltaMs - refreshes * periodMs) > GridToleranceMs)
+            {
+                p.ReportOffGrid++;
+                return;
+            }
             p.ReportSamples++;
-            if(Math.Abs(deltaMs) <= LockToleranceMs) p.ReportSameRefresh++;
+            if(refreshes == 0) p.ReportSameRefresh++;
             if(p.ReportDeltaMs.Count < p.ReportDeltaMs.Capacity) p.ReportDeltaMs.Add(deltaMs);
 
-            p.Window.Add(deltaMs);
+            p.Window.Add(refreshes);
             if(p.Window.Count < CheckWindow) return;
 
             p.Window.Sort();
-            double median = p.Window[CheckWindow / 2];
-            int offset = (int)Math.Round(median / periodMs);
-            double phase = median - offset * periodMs;
+            int offset = p.Window[CheckWindow / 2];
             int agree = 0;
-            foreach(double d in p.Window)
+            foreach(int k in p.Window)
             {
-                if((int)Math.Round(d / periodMs) == offset) agree++;
+                if(k == offset) agree++;
             }
             p.Window.Clear();
-
-            if(Math.Abs(phase) > LockToleranceMs)
-            {
-                if(Time.unscaledTime >= p.NextUnlockedWarning)
-                {
-                    p.NextUnlockedWarning = Time.unscaledTime + UnlockedWarningInterval;
-                    Debug.LogWarning($"FrameLock: the GPUs of the head and of {p.Name} refresh {Math.Abs(phase):F2} ms apart, so they are not " +
-                                     "frame-locked and no pose can reach both screens at the same moment. Check NVIDIA Control Panel > " +
-                                     "Workstation > Synchronize displays.");
-                }
-                return;
-            }
-            if(agree < CheckAgreement * CheckWindow) return;
+            if(!frameLocked || agree < CheckAgreement * CheckWindow) return;
 
             p.Offset = offset;
             p.Decided = true;
@@ -1018,6 +1030,7 @@ namespace UniCAVE
                     pairing = $"first client shows each pose {BeforeAfter(delta)} the head, at the same refresh for " +
                               $"{100.0 * p.ReportSameRefresh / p.ReportSamples:F0}% of {p.ReportSamples} poses";
                 }
+                if(p != null && p.ReportOffGrid > 0) pairing += $", {p.ReportOffGrid} vsync time(s) off the refresh grid ignored";
                 Debug.Log($"FrameLock head: state {stateId}, {locked} of {peers.Count} frame-lock client(s) in lockstep, {expected} Netcode client(s), " +
                           $"acknowledgement wait mean {mean:F2} ms max {ackWaitMaxMs:F2} ms{late}, barrier {BarrierModes()}, join {join}, " +
                           $"{pairing}, pairing steps {steps}.");
@@ -1025,6 +1038,7 @@ namespace UniCAVE
                 {
                     peer.ReportSamples = 0;
                     peer.ReportSameRefresh = 0;
+                    peer.ReportOffGrid = 0;
                     peer.ReportDeltaMs.Clear();
                 }
                 ackWaitSumMs = 0.0;
